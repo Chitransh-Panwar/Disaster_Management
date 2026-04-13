@@ -1,0 +1,40 @@
+{
+  "id": "fani-2019",
+  "label": "Cyclone Fani",
+  "year": 2019,
+  "markers": [
+    {
+      "id": "fani-cyclone-zone",
+      "kind": "disasterZone",
+      "type": "cyclone",
+      "lat": 19.8135,
+      "lng": 85.8312,
+      "fields": {
+        "windSpeedKmh": 220,
+        "category": "Very Severe Cyclonic Storm",
+        "landfallDate": "2019-05-03"
+      }
+    },
+    {
+      "id": "fani-command-center",
+      "kind": "helpCenter",
+      "type": "commandCenter",
+      "lat": 20.2961,
+      "lng": 85.8245,
+      "fields": {
+        "name": "Operations Control Room"
+      }
+    },
+    {
+      "id": "fani-fuel-station",
+      "kind": "resourceMarker",
+      "type": "fuelStation",
+      "lat": 20.2601,
+      "lng": 85.8335,
+      "fields": {
+        "tankers": 12
+      }
+    }
+  ],
+  "edgeOverrides": []
+}

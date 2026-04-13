@@ -1,0 +1,41 @@
+{
+  "id": "kerala-2018",
+  "label": "Kerala Floods",
+  "year": 2018,
+  "markers": [
+    {
+      "id": "kerala-flood-zone",
+      "kind": "disasterZone",
+      "type": "flood",
+      "lat": 10.8505,
+      "lng": 76.2711,
+      "fields": {
+        "waterLevelM": 3.2,
+        "displaced": 120000,
+        "date": "2018-08-18",
+        "severity": "high"
+      }
+    },
+    {
+      "id": "kerala-command-center",
+      "kind": "helpCenter",
+      "type": "commandCenter",
+      "lat": 10.5339,
+      "lng": 76.2144,
+      "fields": {
+        "name": "State Command Center"
+      }
+    },
+    {
+      "id": "kerala-relief-depot",
+      "kind": "resourceMarker",
+      "type": "foodDepot",
+      "lat": 10.8505,
+      "lng": 76.5601,
+      "fields": {
+        "supplies": "Meals"
+      }
+    }
+  ],
+  "edgeOverrides": []
+}

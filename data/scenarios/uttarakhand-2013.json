@@ -1,0 +1,40 @@
+{
+  "id": "uttarakhand-2013",
+  "label": "Uttarakhand Flash Floods",
+  "year": 2013,
+  "markers": [
+    {
+      "id": "uttarakhand-landslide-zone",
+      "kind": "disasterZone",
+      "type": "landslide",
+      "lat": 30.0668,
+      "lng": 79.0193,
+      "fields": {
+        "volumeM3": 420000,
+        "slopeAngle": 47,
+        "roadBlockage": "major"
+      }
+    },
+    {
+      "id": "uttarakhand-command-center",
+      "kind": "helpCenter",
+      "type": "commandCenter",
+      "lat": 30.3165,
+      "lng": 78.0322,
+      "fields": {
+        "name": "District Command Post"
+      }
+    },
+    {
+      "id": "uttarakhand-helipad",
+      "kind": "helpCenter",
+      "type": "helipad",
+      "lat": 30.1914,
+      "lng": 78.1997,
+      "fields": {
+        "name": "Air Evac Point"
+      }
+    }
+  ],
+  "edgeOverrides": []
+}

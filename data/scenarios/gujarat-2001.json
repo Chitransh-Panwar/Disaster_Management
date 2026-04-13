@@ -1,0 +1,41 @@
+{
+  "id": "gujarat-2001",
+  "label": "Gujarat Earthquake",
+  "year": 2001,
+  "markers": [
+    {
+      "id": "gujarat-earthquake-zone",
+      "kind": "disasterZone",
+      "type": "earthquake",
+      "lat": 23.0225,
+      "lng": 72.5714,
+      "fields": {
+        "magnitude": 7.7,
+        "deaths": 20000,
+        "damagePct": 68,
+        "date": "2001-01-26"
+      }
+    },
+    {
+      "id": "gujarat-command-center",
+      "kind": "helpCenter",
+      "type": "commandCenter",
+      "lat": 23.2156,
+      "lng": 72.6369,
+      "fields": {
+        "name": "Relief Command Center"
+      }
+    },
+    {
+      "id": "gujarat-medical-stock",
+      "kind": "resourceMarker",
+      "type": "medicalStock",
+      "lat": 23.0333,
+      "lng": 72.5275,
+      "fields": {
+        "units": 240
+      }
+    }
+  ],
+  "edgeOverrides": []
+}

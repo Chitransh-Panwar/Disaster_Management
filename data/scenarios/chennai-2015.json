@@ -1,0 +1,41 @@
+{
+  "id": "chennai-2015",
+  "label": "Chennai Floods",
+  "year": 2015,
+  "markers": [
+    {
+      "id": "chennai-flood-zone",
+      "kind": "disasterZone",
+      "type": "flood",
+      "lat": 13.0827,
+      "lng": 80.2707,
+      "fields": {
+        "waterLevelM": 2.4,
+        "displaced": 200000,
+        "date": "2015-11-09",
+        "severity": "critical"
+      }
+    },
+    {
+      "id": "chennai-command-center",
+      "kind": "helpCenter",
+      "type": "commandCenter",
+      "lat": 13.0674,
+      "lng": 80.2376,
+      "fields": {
+        "name": "City Command Center"
+      }
+    },
+    {
+      "id": "chennai-relief-camp",
+      "kind": "helpCenter",
+      "type": "reliefCamp",
+      "lat": 13.1102,
+      "lng": 80.2818,
+      "fields": {
+        "capacity": 5000
+      }
+    }
+  ],
+  "edgeOverrides": []
+}

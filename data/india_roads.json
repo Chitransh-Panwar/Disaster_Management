@@ -1,0 +1,17 @@
+{
+  "nodes": [
+    {"id": "DEL", "name": "Delhi", "lat": 28.6139, "lng": 77.2090},
+    {"id": "BPL", "name": "Bhopal", "lat": 23.2599, "lng": 77.4126},
+    {"id": "NGP", "name": "Nagpur", "lat": 21.1458, "lng": 79.0882},
+    {"id": "HYD", "name": "Hyderabad", "lat": 17.3850, "lng": 78.4867},
+    {"id": "BLR", "name": "Bengaluru", "lat": 12.9716, "lng": 77.5946},
+    {"id": "CHN", "name": "Chennai", "lat": 13.0827, "lng": 80.2707}
+  ],
+  "edges": [
+    {"id": "E-DEL-BPL", "from": "DEL", "to": "BPL", "km": 780, "status": "open"},
+    {"id": "E-BPL-NGP", "from": "BPL", "to": "NGP", "km": 380, "status": "open"},
+    {"id": "E-NGP-HYD", "from": "NGP", "to": "HYD", "km": 500, "status": "open"},
+    {"id": "E-HYD-BLR", "from": "HYD", "to": "BLR", "km": 570, "status": "open"},
+    {"id": "E-BLR-CHN", "from": "BLR", "to": "CHN", "km": 350, "status": "open"}
+  ]
+}
