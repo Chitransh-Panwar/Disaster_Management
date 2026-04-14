@@ -1,5 +1,6 @@
 import { bindMapMarkerPlacement, initMap } from './map/map.js';
 import { createMarkerLayers, createRoadLayer, createRouteLayer } from './map/layers.js';
+import { createOsmLayers } from './map/osmLayers.js';
 import { computeRoadComponents } from './domain/connectivity.js';
 import { applyEdgeOverrides, buildAdjacency, loadRoadNetwork } from './domain/roads.js';
 import { nearestNodeId } from './domain/snap.js';
@@ -74,6 +75,17 @@ async function main() {
     if (!state.roadNetwork) return;
     const net = applyEdgeOverrides(state.roadNetwork, state.edgeOverrides);
     roads.render(net);
+  });
+
+  const osmLayers = createOsmLayers(map, store, eventLog);
+  store.subscribe(() => {
+    const s = store.getState();
+    if (!s.osmEnabled) {
+      osmLayers.clear();
+      return;
+    }
+    osmLayers.renderRoads(s.osmRoadNetwork, s.osmEdgeOverrides);
+    osmLayers.renderPois(s.osmPois);
   });
 
   const route = createRouteLayer(map);
