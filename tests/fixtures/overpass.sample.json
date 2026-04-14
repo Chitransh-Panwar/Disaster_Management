@@ -1,0 +1,31 @@
+{
+  "version": 0.6,
+  "generator": "overpass",
+  "osm3s": { "timestamp_osm_base": "2026-04-14T00:00:00Z" },
+  "elements": [
+    {
+      "type": "way",
+      "id": 1001,
+      "tags": { "highway": "primary", "name": "Test Road A" },
+      "geometry": [
+        { "lat": 28.0, "lon": 77.0 },
+        { "lat": 28.0, "lon": 77.01 },
+        { "lat": 28.01, "lon": 77.01 }
+      ]
+    },
+    {
+      "type": "way",
+      "id": 1002,
+      "tags": { "highway": "secondary", "name": "Test Road B" },
+      "geometry": [
+        { "lat": 28.01, "lon": 77.01 },
+        { "lat": 28.02, "lon": 77.02 }
+      ]
+    },
+    {
+      "type": "way",
+      "id": 1003,
+      "tags": { "highway": "primary" }
+    }
+  ]
+}
