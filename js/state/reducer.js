@@ -4,8 +4,17 @@ export function createInitialState() {
     activeScenarioId: null,
     markers: [],
     selectedMarkerId: null,
+
     roadNetwork: null,
     edgeOverrides: {},
+
+    // Live OSM layers
+    osmEnabled: true,
+    osmRoadNetwork: null,
+    osmPois: [],
+    osmEdgeOverrides: {},
+    osmFetchStatus: { loading: false, error: null, lastAt: null },
+
     bridgeEdgeIds: [],
     stats: { components: null },
     resources: [],
@@ -35,6 +44,17 @@ export function sanitizePersistedState(persisted) {
       if (v === 'open' || v === 'partial' || v === 'blocked') clean[k] = v;
     }
     out.edgeOverrides = clean;
+  }
+  if (typeof persisted.osmEnabled === 'boolean') {
+    out.osmEnabled = persisted.osmEnabled;
+  }
+  if (persisted.osmEdgeOverrides && typeof persisted.osmEdgeOverrides === 'object') {
+    const clean = Object.create(null);
+    for (const [k, v] of Object.entries(persisted.osmEdgeOverrides)) {
+      if (k === '__proto__' || k === 'constructor' || k === 'prototype') continue;
+      if (v === 'open' || v === 'partial' || v === 'blocked') clean[k] = v;
+    }
+    out.osmEdgeOverrides = clean;
   }
   if (persisted.bridgeEdgeIds && Array.isArray(persisted.bridgeEdgeIds)) {
     out.bridgeEdgeIds = persisted.bridgeEdgeIds;
@@ -66,11 +86,53 @@ export function reducer(state, action) {
       return { ...state, selectedMarkerId: action.markerId };
     case 'SET_ROAD_NETWORK':
       return { ...state, roadNetwork: action.network };
-    case 'APPLY_EDGE_OVERRIDE':
+    case 'APPLY_EDGE_OVERRIDE': {
+      const edgeId = action.edgeId;
+      const status = action.status;
+      if (typeof edgeId !== 'string' || edgeId.length === 0) return state;
+      if (edgeId === '__proto__' || edgeId === 'constructor' || edgeId === 'prototype') return state;
+      if (status !== 'open' && status !== 'partial' && status !== 'blocked') return state;
       return {
         ...state,
-        edgeOverrides: { ...state.edgeOverrides, [action.edgeId]: action.status },
+        edgeOverrides: { ...state.edgeOverrides, [edgeId]: status },
       };
+    }
+    case 'SET_OSM_ENABLED':
+      return { ...state, osmEnabled: Boolean(action.enabled) };
+    case 'OSM_FETCH_START':
+      return {
+        ...state,
+        osmFetchStatus: { ...state.osmFetchStatus, loading: true, error: null },
+      };
+    case 'OSM_FETCH_ERROR':
+      return {
+        ...state,
+        osmFetchStatus: {
+          ...state.osmFetchStatus,
+          loading: false,
+          error: String(action.error ?? 'Unknown error'),
+        },
+      };
+    case 'OSM_FETCH_SUCCESS': {
+      const lastAt = Number.isFinite(action.at) ? action.at : Date.now();
+      return {
+        ...state,
+        osmRoadNetwork: action.network,
+        osmPois: Array.isArray(action.pois) ? action.pois : [],
+        osmFetchStatus: { loading: false, error: null, lastAt },
+      };
+    }
+    case 'APPLY_OSM_EDGE_OVERRIDE': {
+      const edgeId = action.edgeId;
+      const status = action.status;
+      if (typeof edgeId !== 'string' || edgeId.length === 0) return state;
+      if (edgeId === '__proto__' || edgeId === 'constructor' || edgeId === 'prototype') return state;
+      if (status !== 'open' && status !== 'partial' && status !== 'blocked') return state;
+      return {
+        ...state,
+        osmEdgeOverrides: { ...state.osmEdgeOverrides, [edgeId]: status },
+      };
+    }
     case 'SET_STATS':
       return { ...state, stats: { ...state.stats, ...action.stats } };
     case 'SET_BRIDGES':

@@ -1,0 +1,34 @@
+{
+  "version": 0.6,
+  "generator": "overpass",
+  "elements": [
+    {
+      "type": "node",
+      "id": 2001,
+      "lat": 28.61,
+      "lon": 77.21,
+      "tags": { "amenity": "hospital", "name": "City Hospital" }
+    },
+    {
+      "type": "node",
+      "id": 2002,
+      "lat": 28.62,
+      "lon": 77.22,
+      "tags": { "amenity": "police" }
+    },
+    {
+      "type": "node",
+      "id": 2003,
+      "lat": 28.63,
+      "lon": 77.23,
+      "tags": { "aeroway": "helipad", "name": "H1" }
+    },
+    {
+      "type": "node",
+      "id": 2004,
+      "lat": 28.64,
+      "lon": 77.24,
+      "tags": { "amenity": "cafe" }
+    }
+  ]
+}

@@ -1,13 +1,19 @@
 import { bindMapMarkerPlacement, initMap } from './map/map.js';
 import { createMarkerLayers, createRoadLayer, createRouteLayer } from './map/layers.js';
+import { createOsmLayers } from './map/osmLayers.js';
+import { buildOverpassQuery, createOverpassClient, throttleMs } from './domain/overpass.js';
+import { overpassToRoadNetwork } from './domain/osmRoads.js';
+import { overpassToPois } from './domain/osmPois.js';
 import { computeRoadComponents } from './domain/connectivity.js';
-import { applyEdgeOverrides, buildAdjacency, loadRoadNetwork } from './domain/roads.js';
+import { applyEdgeOverrides, buildAdjacency, getAlgorithmNetwork, loadRoadNetwork } from './domain/roads.js';
 import { nearestNodeId } from './domain/snap.js';
 import { bfsLevels } from './algo/bfsSpread.js';
 import { boundedKnapsack } from './algo/knapsack.js';
 import { dijkstra } from './algo/dijkstra.js';
 import { findBridgeEdgeIds } from './algo/tarjanBridges.js';
+import { routeStepsFromPath } from './domain/routeSteps.js';
 import { loadScenario, scenarioToStatePayload } from './domain/scenarios.js';
+import { createDijkstraModal } from './ui/dijkstraModal.js';
 import { initPanels } from './ui/panels.js';
 import { createEventLog } from './ui/eventLog.js';
 import { renderLeftTools } from './ui/leftTools.js';
@@ -27,6 +33,8 @@ async function main() {
 
   const map = initMap('map');
   initPanels();
+
+  const dijkstraModal = createDijkstraModal(document.getElementById('dijkstraModalRoot'));
 
   const statsEl = document.getElementById('tab-stats');
   store.subscribe(() => renderStats(statsEl, store.getState()));
@@ -76,6 +84,73 @@ async function main() {
     roads.render(net);
   });
 
+  const osmLayers = createOsmLayers(map, store, eventLog);
+  store.subscribe(() => {
+    const s = store.getState();
+    if (!s.osmEnabled) {
+      osmLayers.clear();
+      return;
+    }
+    osmLayers.renderRoads(s.osmRoadNetwork, s.osmEdgeOverrides);
+    osmLayers.renderPois(s.osmPois);
+  });
+
+  const overpass = createOverpassClient();
+  /** @type {AbortController | null} */
+  let inflight = null;
+
+  function boundsToBbox(bounds) {
+    const sw = bounds.getSouthWest();
+    const ne = bounds.getNorthEast();
+    return { s: sw.lat, w: sw.lng, n: ne.lat, e: ne.lng };
+  }
+
+  async function refreshOsm() {
+    const s = store.getState();
+    if (!s.osmEnabled) return;
+
+    const zoom = map.getZoom();
+    if (zoom < 7) {
+      eventLog?.logEvent?.('hint', 'Zoom in to load live OSM roads/POIs');
+      return;
+    }
+
+    const bbox = boundsToBbox(map.getBounds());
+    const area = Math.abs((bbox.n - bbox.s) * (bbox.e - bbox.w));
+    if (area > 6) {
+      eventLog?.logEvent?.('hint', 'Viewport too large for Overpass; zoom in further');
+      return;
+    }
+
+    if (inflight) inflight.abort();
+    inflight = new AbortController();
+
+    store.dispatch({ type: 'OSM_FETCH_START' });
+
+    try {
+      const q = buildOverpassQuery({ bbox, includeRoads: true, includePois: true });
+      const json = await overpass.runQuery(q, { signal: inflight.signal });
+
+      const network = overpassToRoadNetwork(json);
+      const pois = overpassToPois(json);
+
+      store.dispatch({ type: 'OSM_FETCH_SUCCESS', network, pois, at: Date.now() });
+      eventLog?.logEvent?.(
+        'data',
+        `OSM loaded: ${network.nodes.length} nodes, ${network.edges.length} edges, ${pois.length} POIs`
+      );
+    } catch (err) {
+      if (err && typeof err === 'object' && err.name === 'AbortError') return;
+      const message = err instanceof Error ? err.message : String(err);
+      store.dispatch({ type: 'OSM_FETCH_ERROR', error: message });
+      eventLog?.logEvent?.('system', `OSM fetch failed: ${message}`);
+    }
+  }
+
+  const refreshOsmThrottled = throttleMs(refreshOsm, 1200);
+  map.on('moveend', refreshOsmThrottled);
+  refreshOsmThrottled();
+
   const route = createRouteLayer(map);
 
   let lastAction = null;
@@ -91,12 +166,12 @@ async function main() {
     if (lastAction.type === 'RUN_DSU') {
       lastAction = null;
       const state = store.getState();
-      if (!state.roadNetwork) {
+      const net = getAlgorithmNetwork(state);
+      if (!net) {
         eventLog?.logEvent?.('dsu', 'No road network loaded');
         return;
       }
 
-      const net = applyEdgeOverrides(state.roadNetwork, state.edgeOverrides);
       const components = computeRoadComponents(net);
       store.dispatch({ type: 'SET_STATS', stats: { components } });
       eventLog?.logEvent?.('dsu', `Components: ${components}`);
@@ -106,29 +181,28 @@ async function main() {
     if (lastAction.type === 'RUN_TARJAN') {
       lastAction = null;
       const state = store.getState();
-      if (!state.roadNetwork) {
+      const net = getAlgorithmNetwork(state);
+      if (!net) {
         eventLog?.logEvent?.('tarjan', 'No road network loaded');
         return;
       }
 
-      const net = applyEdgeOverrides(state.roadNetwork, state.edgeOverrides);
       const adj = buildAdjacency(net);
       const edgeIds = findBridgeEdgeIds(adj);
       store.dispatch({ type: 'SET_BRIDGES', edgeIds });
       eventLog?.logEvent?.('tarjan', `Bridges: ${edgeIds.length}`);
-      roads.render(net);
       return;
     }
 
     if (lastAction.type === 'RUN_BFS') {
       lastAction = null;
       const state = store.getState();
-      if (!state.roadNetwork) {
+      const net = getAlgorithmNetwork(state);
+      if (!net) {
         eventLog?.logEvent?.('bfs', 'No road network loaded');
         return;
       }
 
-      const net = applyEdgeOverrides(state.roadNetwork, state.edgeOverrides);
       const adj = buildAdjacency(net);
 
       const markers = Array.isArray(state.markers) ? state.markers : [];
@@ -224,9 +298,14 @@ async function main() {
     lastAction = null;
 
     const state = store.getState();
-    if (!state.roadNetwork) return;
+    const net = getAlgorithmNetwork(state);
+    if (!net) {
+      dijkstraModal.close();
+      return;
+    }
 
-    const net = applyEdgeOverrides(state.roadNetwork, state.edgeOverrides);
+    dijkstraModal.close();
+
     const adj = buildAdjacency(net);
 
     const markers = Array.isArray(state.markers) ? state.markers : [];
@@ -282,6 +361,25 @@ async function main() {
       .filter(Boolean);
 
     route.render(pathLatLngs);
+
+    try {
+      const { steps, totalCost } = routeStepsFromPath(adj, res.path);
+      const edgeById = new Map((net.edges ?? []).map((e) => [e.id, e]));
+      const enrichedSteps = steps.map((s) => ({
+        ...s,
+        status: s.edgeId ? edgeById.get(s.edgeId)?.status ?? null : null,
+      }));
+
+      dijkstraModal.open({
+        title: 'Dijkstra Simulation',
+        subtitle: `Costs: open=km, partial=5×km, blocked=∞. Steps: ${enrichedSteps.length}`,
+        steps: enrichedSteps,
+        totalCost,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      eventLog?.logEvent?.('dijkstra', `Simulation failed: ${message}`);
+    }
   });
 
   try {

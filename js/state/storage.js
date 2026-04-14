@@ -17,6 +17,10 @@ export function saveState(state) {
       edgeOverrides: state.edgeOverrides,
       activeScenarioId: state.activeScenarioId,
       activeTool: state.activeTool,
+      resources: state.resources,
+      resourceBudget: state.resourceBudget,
+      osmEnabled: state.osmEnabled,
+      osmEdgeOverrides: state.osmEdgeOverrides,
     };
     localStorage.setItem(KEY, JSON.stringify(minimal));
   } catch {

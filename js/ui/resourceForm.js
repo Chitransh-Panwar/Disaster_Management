@@ -151,14 +151,22 @@ export function initResourceTab(targetEl, { map, store, eventLog }) {
       const isChosen = Number.isInteger(count) && count > 0;
 
       const row = el('div', { className: `rf-row${isChosen ? ' rf-row--chosen' : ''}` });
-      row.appendChild(
-        el('div', {
-          className: 'rf-row__main',
-          innerHTML: `<div><b>${r.resourceName ?? r.id}</b> <span class="rf-muted">(${r.resourceType ?? ''})</span></div>
-<div class="rf-muted">qty=${r.quantity ?? '—'}, cap=${r.capacityPerUnit ?? '—'}, cost=${r.costPerUnit ?? '—'}, status=${r.status ?? '—'}</div>
-${isChosen ? `<div class="rf-chip">Chosen: ${count}</div>` : ''}`,
-        })
-      );
+
+      const main = el('div', { className: 'rf-row__main' });
+
+      const title = el('div');
+      title.appendChild(el('b', { textContent: r.resourceName ?? r.id }));
+      title.appendChild(document.createTextNode(' '));
+      title.appendChild(el('span', { className: 'rf-muted', textContent: `(${r.resourceType ?? ''})` }));
+
+      const detailText = `qty=${r.quantity ?? '—'}, cap=${r.capacityPerUnit ?? '—'}, cost=${r.costPerUnit ?? '—'}, status=${r.status ?? '—'}`;
+      const details = el('div', { className: 'rf-muted', textContent: detailText });
+
+      main.appendChild(title);
+      main.appendChild(details);
+      if (isChosen) main.appendChild(el('div', { className: 'rf-chip', textContent: `Chosen: ${count}` }));
+
+      row.appendChild(main);
 
       const del = el('button', { type: 'button', className: 'rf-btn rf-btn--danger', textContent: 'Remove' });
       del.addEventListener('click', () => {
