@@ -103,6 +103,55 @@ export function createMarkerLayers(map, store, eventLog) {
     const activeTool = state?.activeTool;
     const highlightKind = activeTool && typeof activeTool === 'object' ? activeTool.kind : null;
 
+    function selectMarkerId(id) {
+      store.dispatch({ type: 'SET_SELECTED_MARKER', markerId: id });
+      eventLog?.logEvent?.('select', `Selected marker: ${id}`);
+    }
+
+    function isNear(a, b, eps = 1e-5) {
+      return Math.abs(a - b) <= eps;
+    }
+
+    function handleMarkerClick(ev, fallbackId) {
+      const latlng = ev?.latlng;
+      if (!latlng || !Number.isFinite(latlng.lat) || !Number.isFinite(latlng.lng)) {
+        selectMarkerId(fallbackId);
+        return;
+      }
+
+      const stateNow = store.getState();
+      const all = Array.isArray(stateNow?.markers) ? stateNow.markers : [];
+      const overlaps = all
+        .filter((x) => x && typeof x === 'object')
+        .filter((x) => Number.isFinite(x.lat) && Number.isFinite(x.lng))
+        .filter((x) => isNear(x.lat, latlng.lat) && isNear(x.lng, latlng.lng));
+
+      if (overlaps.length <= 1) {
+        selectMarkerId(fallbackId);
+        return;
+      }
+
+      const wrap = document.createElement('div');
+      const title = document.createElement('div');
+      title.style.marginBottom = '6px';
+      title.textContent = `Select marker (${overlaps.length} here)`;
+      wrap.appendChild(title);
+
+      for (const o of overlaps) {
+        const btn = document.createElement('button');
+        btn.style.display = 'block';
+        btn.style.marginBottom = '6px';
+        btn.textContent = `${o.kind ?? 'marker'}:${o.type ?? ''} (${o.id})`;
+        btn.addEventListener('click', () => {
+          selectMarkerId(o.id);
+          map.closePopup();
+        });
+        wrap.appendChild(btn);
+      }
+
+      L.popup().setLatLng(latlng).setContent(wrap).openOn(map);
+    }
+
     for (const m of markers) {
       if (!m || typeof m !== 'object') continue;
       if (!Number.isFinite(m.lat) || !Number.isFinite(m.lng)) continue;
@@ -130,10 +179,7 @@ export function createMarkerLayers(map, store, eventLog) {
           icon: emojiIcon(emoji, def.color, { highlight: highlightKind === 'disasterZone' }),
           bubblingMouseEvents: false,
         });
-        marker.on('click', () => {
-          store.dispatch({ type: 'SET_SELECTED_MARKER', markerId: m.id });
-          eventLog?.logEvent?.('select', `Selected marker: ${m.id}`);
-        });
+        marker.on('click', (ev) => handleMarkerClick(ev, m.id));
         marker.addTo(markerGroup);
       }
 
@@ -145,10 +191,7 @@ export function createMarkerLayers(map, store, eventLog) {
           icon: emojiIcon(def.emoji, '#1f8a5b', { highlight: highlightKind === 'helpCenter' }),
           bubblingMouseEvents: false,
         });
-        marker.on('click', () => {
-          store.dispatch({ type: 'SET_SELECTED_MARKER', markerId: m.id });
-          eventLog?.logEvent?.('select', `Selected marker: ${m.id}`);
-        });
+        marker.on('click', (ev) => handleMarkerClick(ev, m.id));
         marker.addTo(markerGroup);
       }
 
@@ -160,10 +203,7 @@ export function createMarkerLayers(map, store, eventLog) {
           icon: emojiIcon(def.emoji, '#2457d6', { highlight: highlightKind === 'resourceMarker' }),
           bubblingMouseEvents: false,
         });
-        marker.on('click', () => {
-          store.dispatch({ type: 'SET_SELECTED_MARKER', markerId: m.id });
-          eventLog?.logEvent?.('select', `Selected marker: ${m.id}`);
-        });
+        marker.on('click', (ev) => handleMarkerClick(ev, m.id));
         marker.addTo(markerGroup);
       }
     }
