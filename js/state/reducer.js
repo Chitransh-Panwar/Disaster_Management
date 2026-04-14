@@ -86,11 +86,17 @@ export function reducer(state, action) {
       return { ...state, selectedMarkerId: action.markerId };
     case 'SET_ROAD_NETWORK':
       return { ...state, roadNetwork: action.network };
-    case 'APPLY_EDGE_OVERRIDE':
+    case 'APPLY_EDGE_OVERRIDE': {
+      const edgeId = action.edgeId;
+      const status = action.status;
+      if (typeof edgeId !== 'string' || edgeId.length === 0) return state;
+      if (edgeId === '__proto__' || edgeId === 'constructor' || edgeId === 'prototype') return state;
+      if (status !== 'open' && status !== 'partial' && status !== 'blocked') return state;
       return {
         ...state,
-        edgeOverrides: { ...state.edgeOverrides, [action.edgeId]: action.status },
+        edgeOverrides: { ...state.edgeOverrides, [edgeId]: status },
       };
+    }
     case 'SET_OSM_ENABLED':
       return { ...state, osmEnabled: Boolean(action.enabled) };
     case 'OSM_FETCH_START':
@@ -116,11 +122,17 @@ export function reducer(state, action) {
         osmFetchStatus: { loading: false, error: null, lastAt },
       };
     }
-    case 'APPLY_OSM_EDGE_OVERRIDE':
+    case 'APPLY_OSM_EDGE_OVERRIDE': {
+      const edgeId = action.edgeId;
+      const status = action.status;
+      if (typeof edgeId !== 'string' || edgeId.length === 0) return state;
+      if (edgeId === '__proto__' || edgeId === 'constructor' || edgeId === 'prototype') return state;
+      if (status !== 'open' && status !== 'partial' && status !== 'blocked') return state;
       return {
         ...state,
-        osmEdgeOverrides: { ...state.osmEdgeOverrides, [action.edgeId]: action.status },
+        osmEdgeOverrides: { ...state.osmEdgeOverrides, [edgeId]: status },
       };
+    }
     case 'SET_STATS':
       return { ...state, stats: { ...state.stats, ...action.stats } };
     case 'SET_BRIDGES':

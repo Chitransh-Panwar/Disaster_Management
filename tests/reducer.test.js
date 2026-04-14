@@ -99,3 +99,31 @@ test('reducer APPLY_OSM_EDGE_OVERRIDE stores status in osmEdgeOverrides', () => 
   const s1 = reducer(s0, { type: 'APPLY_OSM_EDGE_OVERRIDE', edgeId: 'E42', status: 'blocked' });
   assert.equal(s1.osmEdgeOverrides.E42, 'blocked');
 });
+
+test('reducer APPLY_EDGE_OVERRIDE ignores invalid status', () => {
+  const s0 = createInitialState();
+  const s1 = reducer(s0, { type: 'APPLY_EDGE_OVERRIDE', edgeId: 'E1', status: 'foo' });
+  assert.equal(s1, s0);
+  assert.deepEqual(s1.edgeOverrides, {});
+});
+
+test('reducer APPLY_OSM_EDGE_OVERRIDE ignores invalid status', () => {
+  const s0 = createInitialState();
+  const s1 = reducer(s0, { type: 'APPLY_OSM_EDGE_OVERRIDE', edgeId: 'E1', status: 'foo' });
+  assert.equal(s1, s0);
+  assert.deepEqual(s1.osmEdgeOverrides, {});
+});
+
+test("reducer APPLY_EDGE_OVERRIDE ignores '__proto__' key", () => {
+  const s0 = createInitialState();
+  const s1 = reducer(s0, { type: 'APPLY_EDGE_OVERRIDE', edgeId: '__proto__', status: 'open' });
+  assert.equal(s1, s0);
+  assert.equal(Object.prototype.hasOwnProperty.call(s1.edgeOverrides, '__proto__'), false);
+});
+
+test("reducer APPLY_OSM_EDGE_OVERRIDE ignores '__proto__' key", () => {
+  const s0 = createInitialState();
+  const s1 = reducer(s0, { type: 'APPLY_OSM_EDGE_OVERRIDE', edgeId: '__proto__', status: 'open' });
+  assert.equal(s1, s0);
+  assert.equal(Object.prototype.hasOwnProperty.call(s1.osmEdgeOverrides, '__proto__'), false);
+});
