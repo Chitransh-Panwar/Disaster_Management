@@ -204,3 +204,42 @@ test('sanitizePersistedState ignores non-string route marker ids', () => {
   assert.equal(Object.prototype.hasOwnProperty.call(out, 'routeStartMarkerId'), false);
   assert.equal(Object.prototype.hasOwnProperty.call(out, 'routeGoalMarkerId'), false);
 });
+
+test('createInitialState includes POI toggle defaults', () => {
+  const s = createInitialState();
+  assert.equal(s.poiHospitals, false);
+  assert.equal(s.poiPolice, false);
+});
+
+test('reducer SET_POI_HOSPITALS toggles hospital flag', () => {
+  const s0 = createInitialState();
+  assert.equal(s0.poiHospitals, false);
+  const s1 = reducer(s0, { type: 'SET_POI_HOSPITALS', enabled: true });
+  assert.equal(s1.poiHospitals, true);
+  const s2 = reducer(s1, { type: 'SET_POI_HOSPITALS', enabled: false });
+  assert.equal(s2.poiHospitals, false);
+});
+
+test('reducer SET_POI_POLICE toggles police flag', () => {
+  const s0 = createInitialState();
+  assert.equal(s0.poiPolice, false);
+  const s1 = reducer(s0, { type: 'SET_POI_POLICE', enabled: true });
+  assert.equal(s1.poiPolice, true);
+  const s2 = reducer(s1, { type: 'SET_POI_POLICE', enabled: false });
+  assert.equal(s2.poiPolice, false);
+});
+
+test('reducer OSM_MANUAL_REFRESH returns state unchanged (handled by effects)', () => {
+  const s0 = createInitialState();
+  const s1 = reducer(s0, { type: 'OSM_MANUAL_REFRESH' });
+  assert.equal(s1, s0);
+});
+
+test('sanitizePersistedState preserves POI toggle values', () => {
+  const out = sanitizePersistedState({
+    poiHospitals: true,
+    poiPolice: false,
+  });
+  assert.equal(out.poiHospitals, true);
+  assert.equal(out.poiPolice, false);
+});

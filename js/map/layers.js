@@ -191,19 +191,30 @@ export function createMarkerLayers(map, store, eventLog) {
         const def = DISASTER_ZONES[m.type];
         if (!def) continue;
 
-        const radiusKm =
-          m.type === 'earthquake'
-            ? Number(m.fields?.magnitude ?? 0) * 5
-            : def.defaultRadiusKm;
-        if (!Number.isFinite(radiusKm) || radiusKm <= 0) continue;
+        // Render as polygon if marker has polygon data, otherwise fall back to circle
+        if (Array.isArray(m.polygon) && m.polygon.length >= 3) {
+          L.polygon(m.polygon, {
+            color: def.color,
+            fillColor: def.color,
+            fillOpacity: 0.18,
+            weight: 2,
+            bubblingMouseEvents: false,
+          }).addTo(zoneGroup);
+        } else {
+          const radiusKm =
+            m.type === 'earthquake'
+              ? Number(m.fields?.magnitude ?? 0) * 5
+              : def.defaultRadiusKm;
+          if (!Number.isFinite(radiusKm) || radiusKm <= 0) continue;
 
-        L.circle([m.lat, m.lng], {
-          radius: radiusKm * 1000,
-          color: def.color,
-          fillColor: def.color,
-          fillOpacity: 0.18,
-          bubblingMouseEvents: false,
-        }).addTo(zoneGroup);
+          L.circle([m.lat, m.lng], {
+            radius: radiusKm * 1000,
+            color: def.color,
+            fillColor: def.color,
+            fillOpacity: 0.18,
+            bubblingMouseEvents: false,
+          }).addTo(zoneGroup);
+        }
 
         const emoji = String(def.label ?? '').split(' ').pop() || '📍';
         const marker = L.marker([m.lat, m.lng], {

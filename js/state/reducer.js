@@ -22,6 +22,10 @@ export function createInitialState() {
     osmEdgeOverrides: {},
     osmFetchStatus: { loading: false, error: null, lastAt: null },
 
+    // POI toggles (default OFF)
+    poiHospitals: false,
+    poiPolice: false,
+
     bridgeEdgeIds: [],
     stats: { components: null },
     resources: [],
@@ -54,6 +58,12 @@ export function sanitizePersistedState(persisted) {
   }
   if (typeof persisted.osmEnabled === 'boolean') {
     out.osmEnabled = persisted.osmEnabled;
+  }
+  if (typeof persisted.poiHospitals === 'boolean') {
+    out.poiHospitals = persisted.poiHospitals;
+  }
+  if (typeof persisted.poiPolice === 'boolean') {
+    out.poiPolice = persisted.poiPolice;
   }
   if (persisted.osmEdgeOverrides && typeof persisted.osmEdgeOverrides === 'object') {
     const clean = Object.create(null);
@@ -122,6 +132,12 @@ export function reducer(state, action) {
     }
     case 'SET_OSM_ENABLED':
       return { ...state, osmEnabled: Boolean(action.enabled) };
+    case 'SET_POI_HOSPITALS':
+      return { ...state, poiHospitals: Boolean(action.enabled) };
+    case 'SET_POI_POLICE':
+      return { ...state, poiPolice: Boolean(action.enabled) };
+    case 'OSM_MANUAL_REFRESH':
+      return state; // handled by effects in app.js
     case 'OSM_FETCH_START':
       return {
         ...state,
