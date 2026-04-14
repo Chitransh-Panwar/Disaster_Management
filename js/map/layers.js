@@ -314,7 +314,7 @@ export function createRouteLayer(map) {
     render(pathLatLngs) {
       group.clearLayers();
       if (!pathLatLngs || pathLatLngs.length < 2) return;
-      L.polyline(pathLatLngs, { color: '#000000', weight: 5 }).addTo(group);
+      L.polyline(pathLatLngs, { color: '#1E90FF', weight: 5 }).addTo(group);
     },
   };
 }
@@ -438,7 +438,7 @@ export function createMissionRouteLayer(map) {
 
       for (const path of traveledPaths ?? []) {
         if (!path || path.length < 2) continue;
-        L.polyline(path, { color: '#000000', weight: 5 }).addTo(group);
+        L.polyline(path, { color: '#1E90FF', weight: 5 }).addTo(group);
       }
 
       if (returnPath && returnPath.length >= 2) {
