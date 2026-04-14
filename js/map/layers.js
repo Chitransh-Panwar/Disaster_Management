@@ -100,6 +100,8 @@ export function createMarkerLayers(map, store, eventLog) {
     clear();
     const state = store.getState();
     const markers = Array.isArray(state?.markers) ? state.markers : [];
+    const activeTool = state?.activeTool;
+    const highlightKind = activeTool && typeof activeTool === 'object' ? activeTool.kind : null;
 
     for (const m of markers) {
       if (!m || typeof m !== 'object') continue;
@@ -125,7 +127,7 @@ export function createMarkerLayers(map, store, eventLog) {
 
         const emoji = String(def.label ?? '').split(' ').pop() || '📍';
         const marker = L.marker([m.lat, m.lng], {
-          icon: emojiIcon(emoji, def.color),
+          icon: emojiIcon(emoji, def.color, { highlight: highlightKind === 'disasterZone' }),
           bubblingMouseEvents: false,
         });
         marker.on('click', () => {
@@ -140,7 +142,7 @@ export function createMarkerLayers(map, store, eventLog) {
         if (!def) continue;
 
         const marker = L.marker([m.lat, m.lng], {
-          icon: emojiIcon(def.emoji, '#1f8a5b'),
+          icon: emojiIcon(def.emoji, '#1f8a5b', { highlight: highlightKind === 'helpCenter' }),
           bubblingMouseEvents: false,
         });
         marker.on('click', () => {
@@ -155,7 +157,7 @@ export function createMarkerLayers(map, store, eventLog) {
         if (!def) continue;
 
         const marker = L.marker([m.lat, m.lng], {
-          icon: emojiIcon(def.emoji, '#2457d6'),
+          icon: emojiIcon(def.emoji, '#2457d6', { highlight: highlightKind === 'resourceMarker' }),
           bubblingMouseEvents: false,
         });
         marker.on('click', () => {

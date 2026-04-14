@@ -267,3 +267,8 @@ html, body {
   color: var(--panel-text);
   font-size: 12px;
 }
+
+.idrps-icon.idrps-icon--highlight {
+  filter: drop-shadow(0 0 10px rgba(102, 170, 255, 0.8));
+  transform: scale(1.15);
+}
