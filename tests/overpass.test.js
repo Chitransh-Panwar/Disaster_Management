@@ -13,7 +13,10 @@ test('buildOverpassQuery includes out:json, timeout, bbox, and required filters'
   assert.ok(q.includes('[timeout:25]'));
   assert.ok(q.includes('(1,2,3,4)'));
 
-  assert.match(q, /way\[\"highway\"~\"\^\(motorway\|trunk\|primary\|secondary\)\$\"\]/);
+  assert.match(
+    q,
+    /way\[\"highway\"~\"\^\(motorway\|trunk\|primary\|secondary\|tertiary\|unclassified\|residential\)\$\"\]/
+  );
 
   assert.ok(q.includes('node["amenity"="hospital"]'));
   assert.ok(q.includes('node["amenity"="police"]'));

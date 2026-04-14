@@ -32,7 +32,9 @@ export function buildOverpassQuery({ bbox, includeRoads = true, includePois = tr
 
   const parts = [];
   if (includeRoads) {
-    parts.push(`way["highway"~"^(motorway|trunk|primary|secondary)$"]${bboxStr};`);
+    parts.push(
+      `way["highway"~"^(motorway|trunk|primary|secondary|tertiary|unclassified|residential)$"]${bboxStr};`
+    );
   }
 
   if (includePois) {
