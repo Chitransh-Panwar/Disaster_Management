@@ -45,3 +45,34 @@ export function applyEdgeOverrides(network, edgeOverrides) {
   });
   return { ...network, edges };
 }
+
+function hasUsableNetwork(net) {
+  return (
+    net &&
+    typeof net === 'object' &&
+    Array.isArray(net.nodes) &&
+    net.nodes.length > 0 &&
+    Array.isArray(net.edges) &&
+    net.edges.length > 0
+  );
+}
+
+/**
+ * Picks the road network that algorithms should use.
+ *
+ * Prefers live OSM network when enabled + loaded, but falls back to the bundled network.
+ */
+export function getAlgorithmNetwork(state) {
+  const base = state?.roadNetwork ?? null;
+  const osm = state?.osmEnabled ? state?.osmRoadNetwork : null;
+
+  if (hasUsableNetwork(osm)) {
+    return applyEdgeOverrides(osm, state?.osmEdgeOverrides);
+  }
+
+  if (base) {
+    return applyEdgeOverrides(base, state?.edgeOverrides);
+  }
+
+  return null;
+}

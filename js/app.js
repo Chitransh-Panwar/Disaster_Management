@@ -5,7 +5,7 @@ import { buildOverpassQuery, createOverpassClient, throttleMs } from './domain/o
 import { overpassToRoadNetwork } from './domain/osmRoads.js';
 import { overpassToPois } from './domain/osmPois.js';
 import { computeRoadComponents } from './domain/connectivity.js';
-import { applyEdgeOverrides, buildAdjacency, loadRoadNetwork } from './domain/roads.js';
+import { applyEdgeOverrides, buildAdjacency, getAlgorithmNetwork, loadRoadNetwork } from './domain/roads.js';
 import { nearestNodeId } from './domain/snap.js';
 import { bfsLevels } from './algo/bfsSpread.js';
 import { boundedKnapsack } from './algo/knapsack.js';
@@ -166,12 +166,12 @@ async function main() {
     if (lastAction.type === 'RUN_DSU') {
       lastAction = null;
       const state = store.getState();
-      if (!state.roadNetwork) {
+      const net = getAlgorithmNetwork(state);
+      if (!net) {
         eventLog?.logEvent?.('dsu', 'No road network loaded');
         return;
       }
 
-      const net = applyEdgeOverrides(state.roadNetwork, state.edgeOverrides);
       const components = computeRoadComponents(net);
       store.dispatch({ type: 'SET_STATS', stats: { components } });
       eventLog?.logEvent?.('dsu', `Components: ${components}`);
@@ -181,29 +181,28 @@ async function main() {
     if (lastAction.type === 'RUN_TARJAN') {
       lastAction = null;
       const state = store.getState();
-      if (!state.roadNetwork) {
+      const net = getAlgorithmNetwork(state);
+      if (!net) {
         eventLog?.logEvent?.('tarjan', 'No road network loaded');
         return;
       }
 
-      const net = applyEdgeOverrides(state.roadNetwork, state.edgeOverrides);
       const adj = buildAdjacency(net);
       const edgeIds = findBridgeEdgeIds(adj);
       store.dispatch({ type: 'SET_BRIDGES', edgeIds });
       eventLog?.logEvent?.('tarjan', `Bridges: ${edgeIds.length}`);
-      roads.render(net);
       return;
     }
 
     if (lastAction.type === 'RUN_BFS') {
       lastAction = null;
       const state = store.getState();
-      if (!state.roadNetwork) {
+      const net = getAlgorithmNetwork(state);
+      if (!net) {
         eventLog?.logEvent?.('bfs', 'No road network loaded');
         return;
       }
 
-      const net = applyEdgeOverrides(state.roadNetwork, state.edgeOverrides);
       const adj = buildAdjacency(net);
 
       const markers = Array.isArray(state.markers) ? state.markers : [];
@@ -299,14 +298,14 @@ async function main() {
     lastAction = null;
 
     const state = store.getState();
-    if (!state.roadNetwork) {
+    const net = getAlgorithmNetwork(state);
+    if (!net) {
       dijkstraModal.close();
       return;
     }
 
     dijkstraModal.close();
 
-    const net = applyEdgeOverrides(state.roadNetwork, state.edgeOverrides);
     const adj = buildAdjacency(net);
 
     const markers = Array.isArray(state.markers) ? state.markers : [];
