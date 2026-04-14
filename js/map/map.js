@@ -1,4 +1,4 @@
-import { MAP_DEFAULT } from '../config.js';
+import { MAP_DEFAULT, DEFAULT_SPEED_KMH, DEFAULT_FUEL_KM } from '../config.js';
 import {
   DISASTER_ZONES,
   HELP_CENTERS,
@@ -74,7 +74,7 @@ export function bindMapMarkerPlacement(map, store, eventLog) {
       speedRow.innerHTML = '<label>Speed (km/h): </label>';
       speedInput = document.createElement('input');
       speedInput.type = 'number';
-      speedInput.value = '60';
+      speedInput.value = String(DEFAULT_SPEED_KMH);
       speedInput.style.width = '60px';
       speedRow.appendChild(speedInput);
       html.appendChild(speedRow);
@@ -84,7 +84,7 @@ export function bindMapMarkerPlacement(map, store, eventLog) {
       fuelRow.innerHTML = '<label>Fuel range (km): </label>';
       fuelInput = document.createElement('input');
       fuelInput.type = 'number';
-      fuelInput.value = '200';
+      fuelInput.value = String(DEFAULT_FUEL_KM);
       fuelInput.style.width = '60px';
       fuelRow.appendChild(fuelInput);
       html.appendChild(fuelRow);
@@ -94,8 +94,8 @@ export function bindMapMarkerPlacement(map, store, eventLog) {
     btn.textContent = 'Add marker';
     btn.addEventListener('click', () => {
       const fields = {};
-      if (speedInput) fields.speedKmh = Number(speedInput.value) || 60;
-      if (fuelInput) fields.fuelKm = Number(fuelInput.value) || 200;
+      if (speedInput) fields.speedKmh = Number(speedInput.value) || DEFAULT_SPEED_KMH;
+      if (fuelInput) fields.fuelKm = Number(fuelInput.value) || DEFAULT_FUEL_KM;
       store.dispatch({
         type: 'ADD_MARKER',
         marker: {

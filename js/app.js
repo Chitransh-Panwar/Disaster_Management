@@ -1,6 +1,7 @@
 import { bindMapMarkerPlacement, initMap } from './map/map.js';
 import { createMarkerLayers, createRoadLayer, createRouteLayer, createBridgeLayer, createComponentLayer, createMissionRouteLayer } from './map/layers.js';
 import { createOsmLayers } from './map/osmLayers.js';
+import { DEFAULT_SPEED_KMH, DEFAULT_FUEL_KM } from './config.js';
 import { buildOverpassQuery, createOverpassClient, throttleMs } from './domain/overpass.js';
 import { overpassToRoadNetwork } from './domain/osmRoads.js';
 import { overpassToPois } from './domain/osmPois.js';
@@ -356,8 +357,8 @@ async function main() {
       }
 
       // Get speed/fuel from start marker fields
-      const speedKmh = Number(startMarker.fields?.speedKmh) || 60;
-      const fuelKm = Number(startMarker.fields?.fuelKm) || 200;
+      const speedKmh = Number(startMarker.fields?.speedKmh) || DEFAULT_SPEED_KMH;
+      const fuelKm = Number(startMarker.fields?.fuelKm) || DEFAULT_FUEL_KM;
       eventLog?.logEvent?.('mission', `Facility: speed=${speedKmh} km/h, fuel=${fuelKm} km`);
 
       const adj = buildAdjacency(net);
@@ -605,7 +606,7 @@ async function main() {
     );
 
     // Compute ETA if start marker has speed info
-    const speedKmh = Number(start.fields?.speedKmh) || 60;
+    const speedKmh = Number(start.fields?.speedKmh) || DEFAULT_SPEED_KMH;
     const etaHours = speedKmh > 0 ? res.distance / speedKmh : Infinity;
     eventLog?.logEvent?.(
       'dijkstra',

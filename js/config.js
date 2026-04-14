@@ -7,3 +7,7 @@ export const MAP_DEFAULT = {
 // Backwards-compatible exports
 export const DEFAULT_CENTER = MAP_DEFAULT.center;
 export const DEFAULT_ZOOM = MAP_DEFAULT.zoom;
+
+// Facility / mission defaults
+export const DEFAULT_SPEED_KMH = 60;
+export const DEFAULT_FUEL_KM = 200;

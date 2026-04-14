@@ -108,8 +108,8 @@ export function renderLeftTools(targetEl, store, eventLog) {
   function updateWpInfo() {
     const state = store?.getState?.();
     const wpCount = state?.routeWaypointIds?.length ?? 0;
-    const startId = state?.routeStartMarkerId ?? 'none';
-    wpInfo.textContent = `Mission: Start=${startId ? '✓' : '—'} | Waypoints: ${wpCount}`;
+    const hasStart = state?.routeStartMarkerId != null;
+    wpInfo.textContent = `Mission: Start=${hasStart ? '✓' : '—'} | Waypoints: ${wpCount}`;
   }
   updateWpInfo();
   store?.subscribe?.(updateWpInfo);
