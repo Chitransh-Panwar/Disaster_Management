@@ -272,3 +272,73 @@ html, body {
   filter: drop-shadow(0 0 10px rgba(102, 170, 255, 0.8));
   transform: scale(1.15);
 }
+
+/* Dijkstra modal */
+.idrps-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2500;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.idrps-modal {
+  width: min(760px, 92vw);
+  max-height: 80vh;
+  overflow: auto;
+  background: rgba(8, 17, 30, 0.98);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  color: var(--panel-text);
+}
+
+.idrps-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.idrps-modal__title {
+  font-weight: 700;
+}
+
+.idrps-modal__subtitle {
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 10px;
+}
+
+.idrps-modal__close {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--panel-text);
+  border-radius: 10px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.idrps-steps {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--panel-text);
+}
+
+.idrps-steps__item {
+  margin-bottom: 6px;
+  color: var(--muted);
+}
+
+.idrps-modal__muted {
+  color: var(--muted);
+}
+
+.idrps-modal__total {
+  margin-top: 10px;
+  font-weight: 600;
+}

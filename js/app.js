@@ -11,7 +11,9 @@ import { bfsLevels } from './algo/bfsSpread.js';
 import { boundedKnapsack } from './algo/knapsack.js';
 import { dijkstra } from './algo/dijkstra.js';
 import { findBridgeEdgeIds } from './algo/tarjanBridges.js';
+import { routeStepsFromPath } from './domain/routeSteps.js';
 import { loadScenario, scenarioToStatePayload } from './domain/scenarios.js';
+import { createDijkstraModal } from './ui/dijkstraModal.js';
 import { initPanels } from './ui/panels.js';
 import { createEventLog } from './ui/eventLog.js';
 import { renderLeftTools } from './ui/leftTools.js';
@@ -31,6 +33,8 @@ async function main() {
 
   const map = initMap('map');
   initPanels();
+
+  const dijkstraModal = createDijkstraModal(document.getElementById('dijkstraModalRoot'));
 
   const statsEl = document.getElementById('tab-stats');
   store.subscribe(() => renderStats(statsEl, store.getState()));
@@ -295,7 +299,12 @@ async function main() {
     lastAction = null;
 
     const state = store.getState();
-    if (!state.roadNetwork) return;
+    if (!state.roadNetwork) {
+      dijkstraModal.close();
+      return;
+    }
+
+    dijkstraModal.close();
 
     const net = applyEdgeOverrides(state.roadNetwork, state.edgeOverrides);
     const adj = buildAdjacency(net);
@@ -353,6 +362,25 @@ async function main() {
       .filter(Boolean);
 
     route.render(pathLatLngs);
+
+    try {
+      const { steps, totalCost } = routeStepsFromPath(adj, res.path);
+      const edgeById = new Map((net.edges ?? []).map((e) => [e.id, e]));
+      const enrichedSteps = steps.map((s) => ({
+        ...s,
+        status: s.edgeId ? edgeById.get(s.edgeId)?.status ?? null : null,
+      }));
+
+      dijkstraModal.open({
+        title: 'Dijkstra Simulation',
+        subtitle: `Costs: open=km, partial=5×km, blocked=∞. Steps: ${enrichedSteps.length}`,
+        steps: enrichedSteps,
+        totalCost,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      eventLog?.logEvent?.('dijkstra', `Simulation failed: ${message}`);
+    }
   });
 
   try {
