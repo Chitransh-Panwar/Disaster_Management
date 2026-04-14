@@ -428,7 +428,7 @@ async function main() {
                 `${label} ${id} → nearest road node ${nodeId} (~${approxKm.toFixed(1)} km)`
               );
             }
-          } catch (_) { /* ignore if snap fails */ }
+          } catch (_snapErr) { /* non-critical: snap info is best-effort */ }
         }
       }
       return id;

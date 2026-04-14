@@ -180,7 +180,7 @@ export function createMarkerLayers(map, store, eventLog) {
         row.style.marginBottom = '6px';
 
         const btn = document.createElement('button');
-        btn.style.display = 'inline';
+        btn.style.display = 'inline-block';
         btn.style.marginRight = '6px';
         btn.textContent = `${o.kind ?? 'marker'}:${o.type ?? ''} (${o.id})`;
         btn.addEventListener('click', () => {
