@@ -243,3 +243,54 @@ test('sanitizePersistedState preserves POI toggle values', () => {
   assert.equal(out.poiHospitals, true);
   assert.equal(out.poiPolice, false);
 });
+
+test('reducer REMOVE_MARKER removes marker from state', () => {
+  let s = createInitialState();
+  s = reducer(s, { type: 'ADD_MARKER', marker: { id: 'm1', kind: 'disasterZone', type: 'flood', lat: 10, lng: 20, fields: {} } });
+  s = reducer(s, { type: 'ADD_MARKER', marker: { id: 'm2', kind: 'helpCenter', type: 'hospital', lat: 11, lng: 21, fields: {} } });
+  assert.equal(s.markers.length, 2);
+
+  s = reducer(s, { type: 'REMOVE_MARKER', markerId: 'm1' });
+  assert.equal(s.markers.length, 1);
+  assert.equal(s.markers[0].id, 'm2');
+});
+
+test('reducer REMOVE_MARKER clears selectedMarkerId if it matches', () => {
+  let s = createInitialState();
+  s = reducer(s, { type: 'ADD_MARKER', marker: { id: 'm1', kind: 'disasterZone', type: 'flood', lat: 10, lng: 20, fields: {} } });
+  s = reducer(s, { type: 'SET_SELECTED_MARKER', markerId: 'm1' });
+  assert.equal(s.selectedMarkerId, 'm1');
+
+  s = reducer(s, { type: 'REMOVE_MARKER', markerId: 'm1' });
+  assert.equal(s.selectedMarkerId, null);
+});
+
+test('reducer REMOVE_MARKER clears route references if they match', () => {
+  let s = createInitialState();
+  s = reducer(s, { type: 'ADD_MARKER', marker: { id: 'm1', kind: 'helpCenter', type: 'hospital', lat: 10, lng: 20, fields: {} } });
+  s = reducer(s, { type: 'SET_ROUTE_START', markerId: 'm1' });
+  s = reducer(s, { type: 'SET_ROUTE_GOAL', markerId: 'm1' });
+  s = reducer(s, { type: 'ADD_WAYPOINT', markerId: 'm1' });
+  assert.equal(s.routeStartMarkerId, 'm1');
+  assert.equal(s.routeGoalMarkerId, 'm1');
+  assert.ok(s.routeWaypointIds.includes('m1'));
+
+  s = reducer(s, { type: 'REMOVE_MARKER', markerId: 'm1' });
+  assert.equal(s.routeStartMarkerId, null);
+  assert.equal(s.routeGoalMarkerId, null);
+  assert.ok(!s.routeWaypointIds.includes('m1'));
+});
+
+test('reducer REMOVE_MARKER ignores non-existent marker', () => {
+  let s = createInitialState();
+  s = reducer(s, { type: 'ADD_MARKER', marker: { id: 'm1', kind: 'disasterZone', type: 'flood', lat: 10, lng: 20, fields: {} } });
+  const s2 = reducer(s, { type: 'REMOVE_MARKER', markerId: 'nonexistent' });
+  assert.equal(s2, s);
+});
+
+test('reducer REMOVE_MARKER ignores empty/invalid markerId', () => {
+  const s0 = createInitialState();
+  assert.equal(reducer(s0, { type: 'REMOVE_MARKER', markerId: '' }), s0);
+  assert.equal(reducer(s0, { type: 'REMOVE_MARKER', markerId: 123 }), s0);
+  assert.equal(reducer(s0, { type: 'REMOVE_MARKER' }), s0);
+});

@@ -5,7 +5,7 @@ import { DEFAULT_SPEED_KMH, DEFAULT_FUEL_KM } from './config.js';
 import { buildOverpassQuery, createOverpassClient } from './domain/overpass.js';
 import { overpassToRoadNetwork } from './domain/osmRoads.js';
 import { overpassToPois } from './domain/osmPois.js';
-import { computeRoadComponents } from './domain/connectivity.js';
+import { computeRoadComponents, filterNetworkToDisasterAreas } from './domain/connectivity.js';
 import { DSU } from './algo/dsu.js';
 import { applyEdgeOverrides, buildAdjacency, getAlgorithmNetwork, loadRoadNetwork } from './domain/roads.js';
 import { nearestNodeId } from './domain/snap.js';
@@ -204,18 +204,25 @@ async function main() {
     if (lastAction.type === 'RUN_DSU') {
       lastAction = null;
       const state = store.getState();
-      const net = getAlgorithmNetwork(state);
-      if (!net) {
+      const fullNet = getAlgorithmNetwork(state);
+      if (!fullNet) {
         eventLog?.logEvent?.('dsu', 'No road network loaded');
+        return;
+      }
+
+      // Constrain to disaster areas
+      const markers = Array.isArray(state.markers) ? state.markers : [];
+      const { network: net, message } = filterNetworkToDisasterAreas(fullNet, markers);
+      if (!net) {
+        eventLog?.logEvent?.('dsu', message);
         return;
       }
 
       const components = computeRoadComponents(net);
       store.dispatch({ type: 'SET_STATS', stats: { components } });
-      eventLog?.logEvent?.('dsu', `Components: ${components}`);
+      eventLog?.logEvent?.('dsu', `Components (within disaster areas): ${components}`);
 
       // Highlight the component containing start marker or selected marker
-      const markers = Array.isArray(state.markers) ? state.markers : [];
       let refMarker = null;
       if (state.routeStartMarkerId) {
         refMarker = markers.find((m) => m.id === state.routeStartMarkerId);
@@ -248,16 +255,24 @@ async function main() {
     if (lastAction.type === 'RUN_TARJAN') {
       lastAction = null;
       const state = store.getState();
-      const net = getAlgorithmNetwork(state);
-      if (!net) {
+      const fullNet = getAlgorithmNetwork(state);
+      if (!fullNet) {
         eventLog?.logEvent?.('tarjan', 'No road network loaded');
+        return;
+      }
+
+      // Constrain to disaster areas
+      const markers = Array.isArray(state.markers) ? state.markers : [];
+      const { network: net, message } = filterNetworkToDisasterAreas(fullNet, markers);
+      if (!net) {
+        eventLog?.logEvent?.('tarjan', message);
         return;
       }
 
       const adj = buildAdjacency(net);
       const edgeIds = findBridgeEdgeIds(adj);
       store.dispatch({ type: 'SET_BRIDGES', edgeIds });
-      eventLog?.logEvent?.('tarjan', `Bridges: ${edgeIds.length}`);
+      eventLog?.logEvent?.('tarjan', `Bridges (within disaster areas): ${edgeIds.length}`);
 
       // Render only bridge edges in black
       bridgeLayer.render(edgeIds, net);

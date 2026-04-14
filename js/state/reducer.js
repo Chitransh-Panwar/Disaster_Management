@@ -111,6 +111,19 @@ export function reducer(state, action) {
       return { ...state, activeTool: action.tool };
     case 'ADD_MARKER':
       return { ...state, markers: [...state.markers, action.marker] };
+    case 'REMOVE_MARKER': {
+      const rmId = action.markerId;
+      if (typeof rmId !== 'string' || rmId.length === 0) return state;
+      if (!state.markers.some((m) => m.id === rmId)) return state;
+      return {
+        ...state,
+        markers: state.markers.filter((m) => m.id !== rmId),
+        selectedMarkerId: state.selectedMarkerId === rmId ? null : state.selectedMarkerId,
+        routeStartMarkerId: state.routeStartMarkerId === rmId ? null : state.routeStartMarkerId,
+        routeGoalMarkerId: state.routeGoalMarkerId === rmId ? null : state.routeGoalMarkerId,
+        routeWaypointIds: state.routeWaypointIds.filter((id) => id !== rmId),
+      };
+    }
     case 'SET_SELECTED_MARKER':
       return { ...state, selectedMarkerId: action.markerId };
     case 'SET_ROUTE_START':
