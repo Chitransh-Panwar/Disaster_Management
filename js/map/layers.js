@@ -88,10 +88,12 @@ export function createMarkerLayers(map, store, eventLog) {
 
   const markerGroup = L.layerGroup().addTo(map);
   const zoneGroup = L.layerGroup().addTo(map);
+  const resourceGroup = L.layerGroup().addTo(map);
 
   function clear() {
     markerGroup.clearLayers();
     zoneGroup.clearLayers();
+    resourceGroup.clearLayers();
   }
 
   function render() {
@@ -162,6 +164,33 @@ export function createMarkerLayers(map, store, eventLog) {
         });
         marker.addTo(markerGroup);
       }
+    }
+
+    const resources = Array.isArray(state?.resources) ? state.resources : [];
+    for (const r of resources) {
+      if (!r || typeof r !== 'object') continue;
+      if (!Number.isFinite(r.baseLat) || !Number.isFinite(r.baseLng)) continue;
+
+      const t = String(r.resourceType ?? '').toLowerCase();
+      const emoji = t.includes('helicopter')
+        ? '🚁'
+        : t.includes('drone')
+          ? '🛸'
+          : t.includes('boat') || t.includes('raft')
+            ? '🛥'
+            : '📦';
+
+      const m = L.marker([r.baseLat, r.baseLng], {
+        icon: emojiIcon(emoji, '#2457d6'),
+        bubblingMouseEvents: false,
+      });
+
+      m.on('click', () => {
+        const label = r.resourceName ?? r.id;
+        eventLog?.logEvent?.('resource', `Resource: ${label}`);
+      });
+
+      m.addTo(resourceGroup);
     }
   }
 
