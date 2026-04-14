@@ -59,6 +59,9 @@ export function bindMapMarkerPlacement(map, store, eventLog) {
       return;
     }
 
+    // Disaster zones use freehand drawing (handled by freehandDraw.js)
+    if (tool.kind === 'disasterZone') return;
+
     const id = `${tool.kind}-${Date.now()}`;
 
     // Minimal popup form: one “Confirm” button. Later tasks extend per-marker fields.

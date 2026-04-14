@@ -2,7 +2,7 @@ import { bindMapMarkerPlacement, initMap } from './map/map.js';
 import { createMarkerLayers, createRoadLayer, createRouteLayer, createBridgeLayer, createComponentLayer, createMissionRouteLayer } from './map/layers.js';
 import { createOsmLayers } from './map/osmLayers.js';
 import { DEFAULT_SPEED_KMH, DEFAULT_FUEL_KM } from './config.js';
-import { buildOverpassQuery, createOverpassClient, throttleMs } from './domain/overpass.js';
+import { buildOverpassQuery, createOverpassClient } from './domain/overpass.js';
 import { overpassToRoadNetwork } from './domain/osmRoads.js';
 import { overpassToPois } from './domain/osmPois.js';
 import { computeRoadComponents } from './domain/connectivity.js';
@@ -26,6 +26,7 @@ import { renderStats } from './ui/stats.js';
 import { createStore } from './state/store.js';
 import { createInitialState, reducer, sanitizePersistedState } from './state/reducer.js';
 import { loadState, saveState } from './state/storage.js';
+import { initFreehandDrawing } from './map/freehandDraw.js';
 
 
 async function main() {
@@ -96,7 +97,13 @@ async function main() {
       return;
     }
     osmLayers.renderRoads(s.osmRoadNetwork, s.osmEdgeOverrides);
-    osmLayers.renderPois(s.osmPois);
+    // Only render POIs for enabled types
+    const filteredPois = (s.osmPois ?? []).filter((p) => {
+      if (p.kind === 'hospital') return s.poiHospitals;
+      if (p.kind === 'police') return s.poiPolice;
+      return false;
+    });
+    osmLayers.renderPois(filteredPois);
   });
 
   const overpass = createOverpassClient();
@@ -112,6 +119,12 @@ async function main() {
   async function refreshOsm() {
     const s = store.getState();
     if (!s.osmEnabled) return;
+
+    if (overpass.isOnCooldown()) {
+      const secs = Math.ceil(overpass.getCooldownRemaining() / 1000);
+      eventLog?.logEvent?.('system', `Overpass rate-limited. Retry in ${secs}s.`);
+      return;
+    }
 
     const zoom = map.getZoom();
     if (zoom < 7) {
@@ -132,7 +145,12 @@ async function main() {
     store.dispatch({ type: 'OSM_FETCH_START' });
 
     try {
-      const q = buildOverpassQuery({ bbox, includeRoads: true, includePois: true });
+      const q = buildOverpassQuery({
+        bbox,
+        includeRoads: true,
+        includeHospitals: s.poiHospitals,
+        includePolice: s.poiPolice,
+      });
       const json = await overpass.runQuery(q, { signal: inflight.signal });
 
       const network = overpassToRoadNetwork(json);
@@ -151,9 +169,7 @@ async function main() {
     }
   }
 
-  const refreshOsmThrottled = throttleMs(refreshOsm, 1200);
-  map.on('moveend', refreshOsmThrottled);
-  refreshOsmThrottled();
+  // No auto-fetch on moveend; OSM only loads when user presses the button
 
   const route = createRouteLayer(map);
   const bridgeLayer = createBridgeLayer(map);
@@ -169,6 +185,12 @@ async function main() {
 
   store.subscribe(() => {
     if (!lastAction) return;
+
+    if (lastAction.type === 'OSM_MANUAL_REFRESH') {
+      lastAction = null;
+      refreshOsm();
+      return;
+    }
 
     if (lastAction.type === 'RUN_DSU') {
       lastAction = null;
@@ -686,6 +708,7 @@ async function main() {
     store.dispatch({ type: 'SET_ROAD_NETWORK', network });
     createMarkerLayers(map, store, eventLog);
     bindMapMarkerPlacement(map, store, eventLog);
+    initFreehandDrawing(map, store, eventLog);
 
     const nodes = network?.nodes?.length ?? 0;
     const edges = network?.edges?.length ?? 0;
