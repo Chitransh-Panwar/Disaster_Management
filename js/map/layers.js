@@ -108,6 +108,32 @@ export function createMarkerLayers(map, store, eventLog) {
       eventLog?.logEvent?.('select', `Selected marker: ${id}`);
     }
 
+    function createRouteButtons(markerId) {
+      const div = document.createElement('div');
+      div.style.marginTop = '4px';
+
+      const startBtn = document.createElement('button');
+      startBtn.textContent = '🟢 Set as Start';
+      startBtn.style.marginRight = '6px';
+      startBtn.addEventListener('click', () => {
+        store.dispatch({ type: 'SET_ROUTE_START', markerId });
+        eventLog?.logEvent?.('route', `Route start set: ${markerId}`);
+        map.closePopup();
+      });
+
+      const goalBtn = document.createElement('button');
+      goalBtn.textContent = '🔴 Set as Goal';
+      goalBtn.addEventListener('click', () => {
+        store.dispatch({ type: 'SET_ROUTE_GOAL', markerId });
+        eventLog?.logEvent?.('route', `Route goal set: ${markerId}`);
+        map.closePopup();
+      });
+
+      div.appendChild(startBtn);
+      div.appendChild(goalBtn);
+      return div;
+    }
+
     function isNear(a, b, eps = 1e-5) {
       return Math.abs(a - b) <= eps;
     }
@@ -128,6 +154,18 @@ export function createMarkerLayers(map, store, eventLog) {
 
       if (overlaps.length <= 1) {
         selectMarkerId(fallbackId);
+
+        const wrap = document.createElement('div');
+        const label = document.createElement('div');
+        label.style.marginBottom = '6px';
+        const m = all.find((x) => x.id === fallbackId);
+        label.textContent = m
+          ? `${m.kind ?? 'marker'}:${m.type ?? ''} (${m.id})`
+          : `Marker ${fallbackId}`;
+        wrap.appendChild(label);
+        wrap.appendChild(createRouteButtons(fallbackId));
+
+        L.popup().setLatLng(latlng).setContent(wrap).openOn(map);
         return;
       }
 
@@ -138,15 +176,20 @@ export function createMarkerLayers(map, store, eventLog) {
       wrap.appendChild(title);
 
       for (const o of overlaps) {
+        const row = document.createElement('div');
+        row.style.marginBottom = '6px';
+
         const btn = document.createElement('button');
-        btn.style.display = 'block';
-        btn.style.marginBottom = '6px';
+        btn.style.display = 'inline';
+        btn.style.marginRight = '6px';
         btn.textContent = `${o.kind ?? 'marker'}:${o.type ?? ''} (${o.id})`;
         btn.addEventListener('click', () => {
           selectMarkerId(o.id);
           map.closePopup();
         });
-        wrap.appendChild(btn);
+        row.appendChild(btn);
+        row.appendChild(createRouteButtons(o.id));
+        wrap.appendChild(row);
       }
 
       L.popup().setLatLng(latlng).setContent(wrap).openOn(map);

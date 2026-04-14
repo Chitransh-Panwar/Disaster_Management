@@ -4,6 +4,8 @@ export function createInitialState() {
     activeScenarioId: null,
     markers: [],
     selectedMarkerId: null,
+    routeStartMarkerId: null,
+    routeGoalMarkerId: null,
 
     roadNetwork: null,
     edgeOverrides: {},
@@ -71,6 +73,12 @@ export function sanitizePersistedState(persisted) {
   if (persisted.knapsackResult && typeof persisted.knapsackResult === 'object') {
     out.knapsackResult = persisted.knapsackResult;
   }
+  if (persisted.routeStartMarkerId === null || typeof persisted.routeStartMarkerId === 'string') {
+    out.routeStartMarkerId = persisted.routeStartMarkerId;
+  }
+  if (persisted.routeGoalMarkerId === null || typeof persisted.routeGoalMarkerId === 'string') {
+    out.routeGoalMarkerId = persisted.routeGoalMarkerId;
+  }
   return out;
 }
 
@@ -84,6 +92,10 @@ export function reducer(state, action) {
       return { ...state, markers: [...state.markers, action.marker] };
     case 'SET_SELECTED_MARKER':
       return { ...state, selectedMarkerId: action.markerId };
+    case 'SET_ROUTE_START':
+      return { ...state, routeStartMarkerId: action.markerId ?? null };
+    case 'SET_ROUTE_GOAL':
+      return { ...state, routeGoalMarkerId: action.markerId ?? null };
     case 'SET_ROAD_NETWORK':
       return { ...state, roadNetwork: action.network };
     case 'APPLY_EDGE_OVERRIDE': {
@@ -152,6 +164,8 @@ export function reducer(state, action) {
         markers: action.markers,
         edgeOverrides: action.edgeOverrides,
         selectedMarkerId: null,
+        routeStartMarkerId: null,
+        routeGoalMarkerId: null,
       };
     case 'RUN_DIJKSTRA':
     case 'RUN_DSU':
@@ -165,6 +179,8 @@ export function reducer(state, action) {
         markers: [],
         edgeOverrides: {},
         selectedMarkerId: null,
+        routeStartMarkerId: null,
+        routeGoalMarkerId: null,
       };
     default:
       return state;

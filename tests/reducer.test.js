@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createInitialState, reducer } from '../js/state/reducer.js';
+import { createInitialState, reducer, sanitizePersistedState } from '../js/state/reducer.js';
 
 test('reducer SET_STATS merges stats', () => {
   const s0 = createInitialState();
@@ -126,4 +126,81 @@ test("reducer APPLY_OSM_EDGE_OVERRIDE ignores '__proto__' key", () => {
   const s1 = reducer(s0, { type: 'APPLY_OSM_EDGE_OVERRIDE', edgeId: '__proto__', status: 'open' });
   assert.equal(s1, s0);
   assert.equal(Object.prototype.hasOwnProperty.call(s1.osmEdgeOverrides, '__proto__'), false);
+});
+
+test('createInitialState includes routing fields', () => {
+  const s0 = createInitialState();
+  assert.equal(s0.routeStartMarkerId, null);
+  assert.equal(s0.routeGoalMarkerId, null);
+});
+
+test('reducer SET_ROUTE_START sets routeStartMarkerId', () => {
+  const s0 = createInitialState();
+  const s1 = reducer(s0, { type: 'SET_ROUTE_START', markerId: 'marker-1' });
+  assert.equal(s1.routeStartMarkerId, 'marker-1');
+});
+
+test('reducer SET_ROUTE_GOAL sets routeGoalMarkerId', () => {
+  const s0 = createInitialState();
+  const s1 = reducer(s0, { type: 'SET_ROUTE_GOAL', markerId: 'marker-2' });
+  assert.equal(s1.routeGoalMarkerId, 'marker-2');
+});
+
+test('reducer SET_ROUTE_START defaults to null when markerId missing', () => {
+  const s0 = createInitialState();
+  const s1 = reducer(s0, { type: 'SET_ROUTE_START', markerId: 'x' });
+  const s2 = reducer(s1, { type: 'SET_ROUTE_START' });
+  assert.equal(s2.routeStartMarkerId, null);
+});
+
+test('reducer RESET_ALL clears routing fields', () => {
+  let s = createInitialState();
+  s = reducer(s, { type: 'SET_ROUTE_START', markerId: 'a' });
+  s = reducer(s, { type: 'SET_ROUTE_GOAL', markerId: 'b' });
+  assert.equal(s.routeStartMarkerId, 'a');
+  assert.equal(s.routeGoalMarkerId, 'b');
+  const s2 = reducer(s, { type: 'RESET_ALL' });
+  assert.equal(s2.routeStartMarkerId, null);
+  assert.equal(s2.routeGoalMarkerId, null);
+});
+
+test('reducer LOAD_SCENARIO clears routing fields', () => {
+  let s = createInitialState();
+  s = reducer(s, { type: 'SET_ROUTE_START', markerId: 'a' });
+  s = reducer(s, { type: 'SET_ROUTE_GOAL', markerId: 'b' });
+  const s2 = reducer(s, {
+    type: 'LOAD_SCENARIO',
+    scenarioId: 'test',
+    markers: [],
+    edgeOverrides: {},
+  });
+  assert.equal(s2.routeStartMarkerId, null);
+  assert.equal(s2.routeGoalMarkerId, null);
+});
+
+test('sanitizePersistedState preserves route marker ids', () => {
+  const out = sanitizePersistedState({
+    routeStartMarkerId: 'start-1',
+    routeGoalMarkerId: 'goal-1',
+  });
+  assert.equal(out.routeStartMarkerId, 'start-1');
+  assert.equal(out.routeGoalMarkerId, 'goal-1');
+});
+
+test('sanitizePersistedState preserves null route marker ids', () => {
+  const out = sanitizePersistedState({
+    routeStartMarkerId: null,
+    routeGoalMarkerId: null,
+  });
+  assert.equal(out.routeStartMarkerId, null);
+  assert.equal(out.routeGoalMarkerId, null);
+});
+
+test('sanitizePersistedState ignores non-string route marker ids', () => {
+  const out = sanitizePersistedState({
+    routeStartMarkerId: 123,
+    routeGoalMarkerId: true,
+  });
+  assert.equal(Object.prototype.hasOwnProperty.call(out, 'routeStartMarkerId'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(out, 'routeGoalMarkerId'), false);
 });

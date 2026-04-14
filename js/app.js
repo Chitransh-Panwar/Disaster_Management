@@ -309,14 +309,28 @@ async function main() {
     const adj = buildAdjacency(net);
 
     const markers = Array.isArray(state.markers) ? state.markers : [];
-    const start = markers.find((m) => m.kind === 'helpCenter' && m.type === 'commandCenter');
-    const goal = markers.find((m) => m.id === state.selectedMarkerId);
+
+    // Use explicit route start/goal if set, fall back to legacy behavior
+    let start;
+    let goal;
+    if (state.routeStartMarkerId) {
+      start = markers.find((m) => m.id === state.routeStartMarkerId);
+    }
+    if (!start) {
+      start = markers.find((m) => m.kind === 'helpCenter' && m.type === 'commandCenter');
+    }
+    if (state.routeGoalMarkerId) {
+      goal = markers.find((m) => m.id === state.routeGoalMarkerId);
+    }
+    if (!goal) {
+      goal = markers.find((m) => m.id === state.selectedMarkerId);
+    }
 
     if (!start || !goal) {
-      eventLog?.logEvent?.(
-        'dijkstra',
-        'Select a target marker (and ensure a Command Center exists)'
-      );
+      const hints = [];
+      if (!start) hints.push('Set a Start marker (click a marker → "Set as Start", or place a Command Center)');
+      if (!goal) hints.push('Set a Goal marker (click a marker → "Set as Goal", or select a marker)');
+      eventLog?.logEvent?.('dijkstra', hints.join('. '));
       route.clear();
       return;
     }
@@ -339,6 +353,11 @@ async function main() {
       route.clear();
       return;
     }
+
+    eventLog?.logEvent?.(
+      'dijkstra',
+      `Snapped start → node ${sId}, goal → node ${gId}`
+    );
 
     const res = dijkstra(adj, sId, gId);
     if (!Number.isFinite(res.distance) || res.path.length < 2) {
@@ -380,6 +399,44 @@ async function main() {
       const message = err instanceof Error ? err.message : String(err);
       eventLog?.logEvent?.('dijkstra', `Simulation failed: ${message}`);
     }
+  });
+
+  // Log nearest road node when a marker is selected or set as route start/goal
+  let prevSelectedId = null;
+  let prevStartId = null;
+  let prevGoalId = null;
+  store.subscribe(() => {
+    const s = store.getState();
+    const net = getAlgorithmNetwork(s);
+    const nodes = net?.nodes ?? [];
+    const markers = Array.isArray(s.markers) ? s.markers : [];
+
+    const checkAndLog = (field, prev, label) => {
+      const id = s[field];
+      if (id && id !== prev) {
+        const m = markers.find((x) => x.id === id);
+        if (m && Number.isFinite(m.lat) && Number.isFinite(m.lng) && nodes.length > 0) {
+          try {
+            const nodeId = nearestNodeId(nodes, m.lat, m.lng);
+            if (nodeId) {
+              const node = nodes.find((n) => n.id === nodeId);
+              const dx = m.lat - (node?.lat ?? 0);
+              const dy = m.lng - (node?.lng ?? 0);
+              const approxKm = Math.sqrt(dx * dx + dy * dy) * 111;
+              eventLog?.logEvent?.(
+                'snap',
+                `${label} ${id} → nearest road node ${nodeId} (~${approxKm.toFixed(1)} km)`
+              );
+            }
+          } catch (_) { /* ignore if snap fails */ }
+        }
+      }
+      return id;
+    };
+
+    prevSelectedId = checkAndLog('selectedMarkerId', prevSelectedId, 'Marker');
+    prevStartId = checkAndLog('routeStartMarkerId', prevStartId, 'Start');
+    prevGoalId = checkAndLog('routeGoalMarkerId', prevGoalId, 'Goal');
   });
 
   try {
