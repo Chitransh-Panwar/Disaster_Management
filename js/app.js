@@ -90,6 +90,10 @@ async function main() {
   });
 
   const osmLayers = createOsmLayers(map, store, eventLog);
+  let lastOsmPois = null;
+  let lastPoiHospitals = null;
+  let lastPoiPolice = null;
+  let lastFilteredPois = [];
   store.subscribe(() => {
     const s = store.getState();
     if (!s.osmEnabled) {
@@ -97,13 +101,18 @@ async function main() {
       return;
     }
     osmLayers.renderRoads(s.osmRoadNetwork, s.osmEdgeOverrides);
-    // Only render POIs for enabled types
-    const filteredPois = (s.osmPois ?? []).filter((p) => {
-      if (p.kind === 'hospital') return s.poiHospitals;
-      if (p.kind === 'police') return s.poiPolice;
-      return false;
-    });
-    osmLayers.renderPois(filteredPois);
+    // Only re-filter POIs when relevant state changes
+    if (s.osmPois !== lastOsmPois || s.poiHospitals !== lastPoiHospitals || s.poiPolice !== lastPoiPolice) {
+      lastOsmPois = s.osmPois;
+      lastPoiHospitals = s.poiHospitals;
+      lastPoiPolice = s.poiPolice;
+      lastFilteredPois = (s.osmPois ?? []).filter((p) => {
+        if (p.kind === 'hospital') return s.poiHospitals;
+        if (p.kind === 'police') return s.poiPolice;
+        return false;
+      });
+    }
+    osmLayers.renderPois(lastFilteredPois);
   });
 
   const overpass = createOverpassClient();

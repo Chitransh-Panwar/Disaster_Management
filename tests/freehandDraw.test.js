@@ -27,7 +27,7 @@ test('simplifyPoints keeps vertices that deviate beyond epsilon', () => {
 
 test('simplifyPoints handles empty/null gracefully', () => {
   assert.deepEqual(simplifyPoints([], 0.001), []);
-  assert.deepEqual(simplifyPoints(null, 0.001), null);
+  assert.deepEqual(simplifyPoints(null, 0.001), []);
 });
 
 test('polygonCentroid computes average of points', () => {

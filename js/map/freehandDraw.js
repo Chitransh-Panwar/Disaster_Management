@@ -7,7 +7,7 @@ import { DISASTER_ZONES } from '../domain/markerRegistry.js';
  * @returns {Array<[number,number]>}
  */
 export function simplifyPoints(points, epsilon = 0.0005) {
-  if (!Array.isArray(points) || points.length < 3) return points;
+  if (!Array.isArray(points) || points.length < 3) return Array.isArray(points) ? points : [];
 
   let maxDist = 0;
   let maxIdx = 0;
