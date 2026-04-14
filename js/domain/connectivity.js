@@ -85,7 +85,7 @@ export function filterNetworkToDisasterAreas(network, markers) {
   );
 
   if (disasterMarkers.length === 0) {
-    return { network: null, message: 'No disaster areas exist – add at least one disaster zone before running this algorithm.' };
+    return { network: null, message: 'No disaster areas exist -- add at least one disaster zone before running this algorithm.' };
   }
 
   const nodes = (network?.nodes ?? []).filter(
