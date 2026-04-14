@@ -7,6 +7,11 @@ export function createInitialState() {
     routeStartMarkerId: null,
     routeGoalMarkerId: null,
 
+    // Multi-waypoint mission planning
+    routeWaypointIds: [],
+    waypointStatuses: {},   // { [markerId]: 'visited' | 'unvisited' }
+    missionResult: null,
+
     roadNetwork: null,
     edgeOverrides: {},
 
@@ -78,6 +83,12 @@ export function sanitizePersistedState(persisted) {
   }
   if (persisted.routeGoalMarkerId === null || typeof persisted.routeGoalMarkerId === 'string') {
     out.routeGoalMarkerId = persisted.routeGoalMarkerId;
+  }
+  if (Array.isArray(persisted.routeWaypointIds)) {
+    out.routeWaypointIds = persisted.routeWaypointIds.filter((id) => typeof id === 'string');
+  }
+  if (persisted.waypointStatuses && typeof persisted.waypointStatuses === 'object') {
+    out.waypointStatuses = persisted.waypointStatuses;
   }
   return out;
 }
@@ -166,12 +177,33 @@ export function reducer(state, action) {
         selectedMarkerId: null,
         routeStartMarkerId: null,
         routeGoalMarkerId: null,
+        routeWaypointIds: [],
+        waypointStatuses: {},
+        missionResult: null,
       };
+    case 'ADD_WAYPOINT': {
+      const wId = action.markerId;
+      if (typeof wId !== 'string' || wId.length === 0) return state;
+      if (state.routeWaypointIds.includes(wId)) return state;
+      return { ...state, routeWaypointIds: [...state.routeWaypointIds, wId] };
+    }
+    case 'REMOVE_WAYPOINT': {
+      const rId = action.markerId;
+      if (typeof rId !== 'string') return state;
+      return { ...state, routeWaypointIds: state.routeWaypointIds.filter((id) => id !== rId) };
+    }
+    case 'CLEAR_WAYPOINTS':
+      return { ...state, routeWaypointIds: [], waypointStatuses: {}, missionResult: null };
+    case 'SET_WAYPOINT_STATUSES':
+      return { ...state, waypointStatuses: action.statuses ?? {} };
+    case 'SET_MISSION_RESULT':
+      return { ...state, missionResult: action.result ?? null };
     case 'RUN_DIJKSTRA':
     case 'RUN_DSU':
     case 'RUN_TARJAN':
     case 'RUN_BFS':
     case 'RUN_KNAPSACK':
+    case 'RUN_MISSION':
       return state; // handled by effects
     case 'RESET_ALL':
       return {
@@ -181,6 +213,9 @@ export function reducer(state, action) {
         selectedMarkerId: null,
         routeStartMarkerId: null,
         routeGoalMarkerId: null,
+        routeWaypointIds: [],
+        waypointStatuses: {},
+        missionResult: null,
       };
     default:
       return state;

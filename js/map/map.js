@@ -1,4 +1,4 @@
-import { MAP_DEFAULT } from '../config.js';
+import { MAP_DEFAULT, DEFAULT_SPEED_KMH, DEFAULT_FUEL_KM } from '../config.js';
 import {
   DISASTER_ZONES,
   HELP_CENTERS,
@@ -65,9 +65,37 @@ export function bindMapMarkerPlacement(map, store, eventLog) {
     const html = document.createElement('div');
     html.innerHTML = `<div style="margin-bottom:8px">Add ${tool.kind}:${tool.type} here?</div>`;
 
+    // Speed/fuel fields for facility (helpCenter) markers
+    let speedInput = null;
+    let fuelInput = null;
+    if (tool.kind === 'helpCenter') {
+      const speedRow = document.createElement('div');
+      speedRow.style.marginBottom = '4px';
+      speedRow.innerHTML = '<label>Speed (km/h): </label>';
+      speedInput = document.createElement('input');
+      speedInput.type = 'number';
+      speedInput.value = String(DEFAULT_SPEED_KMH);
+      speedInput.style.width = '60px';
+      speedRow.appendChild(speedInput);
+      html.appendChild(speedRow);
+
+      const fuelRow = document.createElement('div');
+      fuelRow.style.marginBottom = '4px';
+      fuelRow.innerHTML = '<label>Fuel range (km): </label>';
+      fuelInput = document.createElement('input');
+      fuelInput.type = 'number';
+      fuelInput.value = String(DEFAULT_FUEL_KM);
+      fuelInput.style.width = '60px';
+      fuelRow.appendChild(fuelInput);
+      html.appendChild(fuelRow);
+    }
+
     const btn = document.createElement('button');
     btn.textContent = 'Add marker';
     btn.addEventListener('click', () => {
+      const fields = {};
+      if (speedInput) fields.speedKmh = Number(speedInput.value) || DEFAULT_SPEED_KMH;
+      if (fuelInput) fields.fuelKm = Number(fuelInput.value) || DEFAULT_FUEL_KM;
       store.dispatch({
         type: 'ADD_MARKER',
         marker: {
@@ -76,7 +104,7 @@ export function bindMapMarkerPlacement(map, store, eventLog) {
           type: tool.type,
           lat: ev.latlng.lat,
           lng: ev.latlng.lng,
-          fields: {},
+          fields,
         },
       });
       eventLog?.logEvent('marker', `Added ${tool.kind}:${tool.type} (${id})`);

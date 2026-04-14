@@ -18,6 +18,7 @@ const ALGORITHMS = [
   ['BFS Spread ▶', 'RUN_BFS'],
   ['DSU Check ▶', 'RUN_DSU'],
   ['Knapsack ▶', 'RUN_KNAPSACK'],
+  ['Run Mission ▶', 'RUN_MISSION'],
 ];
 
 function createButton(label, onClick, type = 'button') {
@@ -97,4 +98,21 @@ export function renderLeftTools(targetEl, store, eventLog) {
   });
 
   targetEl.appendChild(renderAlgorithms(store));
+
+  // Waypoint count display
+  const wpInfo = document.createElement('div');
+  wpInfo.className = 'tool-group';
+  wpInfo.style.padding = '8px';
+  wpInfo.style.fontSize = '13px';
+
+  function updateWpInfo() {
+    const state = store?.getState?.();
+    const wpCount = state?.routeWaypointIds?.length ?? 0;
+    const hasStart = state?.routeStartMarkerId != null;
+    wpInfo.textContent = `Mission: Start=${hasStart ? '✓' : '—'} | Waypoints: ${wpCount}`;
+  }
+  updateWpInfo();
+  store?.subscribe?.(updateWpInfo);
+
+  targetEl.appendChild(wpInfo);
 }
