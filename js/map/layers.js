@@ -65,6 +65,19 @@ export function createMarkerLayers(map, store, eventLog) {
       eventLog?.logEvent?.('select', `Selected marker: ${id}`);
     }
 
+    function createDeleteButton(markerId) {
+      const btn = document.createElement('button');
+      btn.textContent = '🗑 Delete';
+      btn.style.marginRight = '6px';
+      btn.style.color = '#dc2626';
+      btn.addEventListener('click', () => {
+        store.dispatch({ type: 'REMOVE_MARKER', markerId });
+        eventLog?.logEvent?.('marker', `Deleted marker: ${markerId}`);
+        map.closePopup();
+      });
+      return btn;
+    }
+
     function createRouteButtons(markerId) {
       const div = document.createElement('div');
       div.style.marginTop = '4px';
@@ -151,6 +164,7 @@ export function createMarkerLayers(map, store, eventLog) {
           ? `${m.kind ?? 'marker'}:${m.type ?? ''} (${m.id})`
           : `Marker ${fallbackId}`;
         wrap.appendChild(label);
+        wrap.appendChild(createDeleteButton(fallbackId));
         wrap.appendChild(createRouteButtons(fallbackId));
 
         L.popup().setLatLng(latlng).setContent(wrap).openOn(map);
@@ -176,6 +190,7 @@ export function createMarkerLayers(map, store, eventLog) {
           map.closePopup();
         });
         row.appendChild(btn);
+        row.appendChild(createDeleteButton(o.id));
         row.appendChild(createRouteButtons(o.id));
         wrap.appendChild(row);
       }
