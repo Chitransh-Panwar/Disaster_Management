@@ -185,6 +185,13 @@ async function main() {
   const componentLayer = createComponentLayer(map);
   const missionRouteLayer = createMissionRouteLayer(map);
 
+  function clearAllAlgorithmOverlays() {
+    route.clear();
+    bridgeLayer.clear();
+    componentLayer.clear();
+    missionRouteLayer.clear();
+  }
+
   let lastAction = null;
   const baseDispatch = store.dispatch;
   store.dispatch = (action) => {
@@ -201,8 +208,16 @@ async function main() {
       return;
     }
 
+    if (lastAction.type === 'CLEAR_ALGORITHM_RESULTS') {
+      lastAction = null;
+      clearAllAlgorithmOverlays();
+      eventLog?.logEvent?.('system', 'Algorithm overlays cleared');
+      return;
+    }
+
     if (lastAction.type === 'RUN_DSU') {
       lastAction = null;
+      clearAllAlgorithmOverlays();
       const state = store.getState();
       const fullNet = getAlgorithmNetwork(state);
       if (!fullNet) {
@@ -254,6 +269,7 @@ async function main() {
 
     if (lastAction.type === 'RUN_TARJAN') {
       lastAction = null;
+      clearAllAlgorithmOverlays();
       const state = store.getState();
       const fullNet = getAlgorithmNetwork(state);
       if (!fullNet) {
@@ -281,6 +297,7 @@ async function main() {
 
     if (lastAction.type === 'RUN_BFS') {
       lastAction = null;
+      clearAllAlgorithmOverlays();
       const state = store.getState();
       const net = getAlgorithmNetwork(state);
       if (!net) {
@@ -326,6 +343,7 @@ async function main() {
 
     if (lastAction.type === 'RUN_KNAPSACK') {
       lastAction = null;
+      clearAllAlgorithmOverlays();
       const state = store.getState();
       const resources = Array.isArray(state.resources) ? state.resources : [];
       const budget = Number.isInteger(state.resourceBudget) ? state.resourceBudget : 0;
@@ -377,6 +395,7 @@ async function main() {
 
     if (lastAction.type === 'RUN_MISSION') {
       lastAction = null;
+      clearAllAlgorithmOverlays();
       const state = store.getState();
       const net = getAlgorithmNetwork(state);
       if (!net) {
@@ -576,6 +595,7 @@ async function main() {
     }
 
     lastAction = null;
+    clearAllAlgorithmOverlays();
 
     const state = store.getState();
     const net = getAlgorithmNetwork(state);

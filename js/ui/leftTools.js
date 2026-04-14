@@ -84,6 +84,12 @@ function renderAlgorithms(store) {
     })
   );
 
+  list.appendChild(
+    createButton('🧹 Clear Results', () => {
+      store?.dispatch?.({ type: 'CLEAR_ALGORITHM_RESULTS' });
+    })
+  );
+
   section.appendChild(list);
   return section;
 }
