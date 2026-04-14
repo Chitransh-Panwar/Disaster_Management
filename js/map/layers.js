@@ -18,61 +18,9 @@ export function createRoadLayer(map, store, eventLog) {
       group.clearLayers();
     },
     render(network) {
+      // Roads are hidden by default for performance; only algorithm outputs are shown.
+      // Data is kept in state for algorithms to use.
       group.clearLayers();
-      const byId = new Map((network?.nodes ?? []).map((n) => [n.id, n]));
-      const bridgeIds = new Set(store?.getState?.().bridgeEdgeIds ?? []);
-
-      for (const e of network?.edges ?? []) {
-        const a = byId.get(e.from);
-        const b = byId.get(e.to);
-        if (!a || !b) continue;
-
-        const isBridge = bridgeIds.has(e.id);
-        const color = isBridge
-          ? '#ffd400'
-          : e.status === 'blocked'
-            ? '#ff3b3b'
-            : e.status === 'partial'
-              ? '#ff9f1a'
-              : '#66b3ff';
-        const dash = e.status === 'blocked' ? '6 6' : null;
-
-        const line = L.polyline([[a.lat, a.lng], [b.lat, b.lng]], {
-          color,
-          weight: 4,
-          dashArray: dash,
-          bubblingMouseEvents: false,
-        });
-
-        line.on('click', () => {
-          const state = store.getState();
-          const current = state.edgeOverrides?.[e.id] ?? e.status;
-
-          const wrap = document.createElement('div');
-          wrap.innerHTML = `<div style="margin-bottom:6px">${e.id} (${current})</div>`;
-
-          const mk = (label, status) => {
-            const b = document.createElement('button');
-            b.textContent = label;
-            b.style.marginRight = '6px';
-            b.addEventListener('click', () => {
-              store.dispatch({ type: 'APPLY_EDGE_OVERRIDE', edgeId: e.id, status });
-              eventLog?.logEvent?.('road', `${e.id} → ${status}`);
-              map.closePopup();
-            });
-            return b;
-          };
-
-          wrap.appendChild(mk('Block ❌', 'blocked'));
-          wrap.appendChild(mk('Partial ⚠', 'partial'));
-          wrap.appendChild(mk('Open ✅', 'open'));
-
-          const center = line.getBounds().getCenter();
-          L.popup().setLatLng(center).setContent(wrap).openOn(map);
-        });
-
-        line.addTo(group);
-      }
     },
   };
 }
@@ -102,6 +50,15 @@ export function createMarkerLayers(map, store, eventLog) {
     const markers = Array.isArray(state?.markers) ? state.markers : [];
     const activeTool = state?.activeTool;
     const highlightKind = activeTool && typeof activeTool === 'object' ? activeTool.kind : null;
+    const waypointStatuses = state?.waypointStatuses ?? {};
+
+    /** Determine background color override for waypoint status coloring. */
+    function statusBg(markerId, defaultBg) {
+      const st = waypointStatuses[markerId];
+      if (st === 'visited') return '#16a34a'; // green
+      if (st === 'unvisited') return '#dc2626'; // red
+      return defaultBg;
+    }
 
     function selectMarkerId(id) {
       store.dispatch({ type: 'SET_SELECTED_MARKER', markerId: id });
@@ -123,14 +80,45 @@ export function createMarkerLayers(map, store, eventLog) {
 
       const goalBtn = document.createElement('button');
       goalBtn.textContent = '🔴 Set as Goal';
+      goalBtn.style.marginRight = '6px';
       goalBtn.addEventListener('click', () => {
         store.dispatch({ type: 'SET_ROUTE_GOAL', markerId });
         eventLog?.logEvent?.('route', `Route goal set: ${markerId}`);
         map.closePopup();
       });
 
+      const wpBtn = document.createElement('button');
+      wpBtn.textContent = '📍 Add Waypoint';
+      wpBtn.style.marginRight = '6px';
+      wpBtn.addEventListener('click', () => {
+        store.dispatch({ type: 'ADD_WAYPOINT', markerId });
+        eventLog?.logEvent?.('route', `Waypoint added: ${markerId}`);
+        map.closePopup();
+      });
+
+      const rmWpBtn = document.createElement('button');
+      rmWpBtn.textContent = '🗑 Remove WP';
+      rmWpBtn.style.marginRight = '6px';
+      rmWpBtn.addEventListener('click', () => {
+        store.dispatch({ type: 'REMOVE_WAYPOINT', markerId });
+        eventLog?.logEvent?.('route', `Waypoint removed: ${markerId}`);
+        map.closePopup();
+      });
+
+      const clearBtn = document.createElement('button');
+      clearBtn.textContent = '❌ Clear Plan';
+      clearBtn.addEventListener('click', () => {
+        store.dispatch({ type: 'CLEAR_WAYPOINTS' });
+        eventLog?.logEvent?.('route', 'Route plan cleared');
+        map.closePopup();
+      });
+
       div.appendChild(startBtn);
       div.appendChild(goalBtn);
+      div.appendChild(document.createElement('br'));
+      div.appendChild(wpBtn);
+      div.appendChild(rmWpBtn);
+      div.appendChild(clearBtn);
       return div;
     }
 
@@ -231,7 +219,7 @@ export function createMarkerLayers(map, store, eventLog) {
         if (!def) continue;
 
         const marker = L.marker([m.lat, m.lng], {
-          icon: emojiIcon(def.emoji, '#1f8a5b', { highlight: highlightKind === 'helpCenter' }),
+          icon: emojiIcon(def.emoji, statusBg(m.id, '#1f8a5b'), { highlight: highlightKind === 'helpCenter' }),
           bubblingMouseEvents: false,
         });
         marker.on('click', (ev) => handleMarkerClick(ev, m.id));
@@ -243,7 +231,7 @@ export function createMarkerLayers(map, store, eventLog) {
         if (!def) continue;
 
         const marker = L.marker([m.lat, m.lng], {
-          icon: emojiIcon(def.emoji, '#2457d6', { highlight: highlightKind === 'resourceMarker' }),
+          icon: emojiIcon(def.emoji, statusBg(m.id, '#2457d6'), { highlight: highlightKind === 'resourceMarker' }),
           bubblingMouseEvents: false,
         });
         marker.on('click', (ev) => handleMarkerClick(ev, m.id));
@@ -300,7 +288,140 @@ export function createRouteLayer(map) {
     render(pathLatLngs) {
       group.clearLayers();
       if (!pathLatLngs || pathLatLngs.length < 2) return;
-      L.polyline(pathLatLngs, { color: '#3b82f6', weight: 5 }).addTo(group);
+      L.polyline(pathLatLngs, { color: '#000000', weight: 5 }).addTo(group);
+    },
+  };
+}
+
+/**
+ * Layer that renders only bridge edges (from Tarjan) in black.
+ */
+export function createBridgeLayer(map) {
+  if (typeof L === 'undefined') {
+    throw new Error('Leaflet (L) is not available. Ensure leaflet.js is loaded before creating layers.');
+  }
+
+  const group = L.layerGroup().addTo(map);
+  return {
+    clear() {
+      group.clearLayers();
+    },
+    /**
+     * @param {string[]} bridgeEdgeIds
+     * @param {{ nodes: Array, edges: Array }} network
+     */
+    render(bridgeEdgeIds, network) {
+      group.clearLayers();
+      if (!bridgeEdgeIds || !bridgeEdgeIds.length || !network) return;
+
+      const ids = new Set(bridgeEdgeIds);
+      const byId = new Map((network.nodes ?? []).map((n) => [n.id, n]));
+
+      for (const e of network.edges ?? []) {
+        if (!ids.has(e.id)) continue;
+        const a = byId.get(e.from);
+        const b = byId.get(e.to);
+        if (!a || !b) continue;
+
+        L.polyline([[a.lat, a.lng], [b.lat, b.lng]], {
+          color: '#000000',
+          weight: 5,
+          bubblingMouseEvents: false,
+        }).addTo(group);
+      }
+    },
+  };
+}
+
+/**
+ * Layer that renders DSU connected component edges containing a given node in black.
+ */
+export function createComponentLayer(map) {
+  if (typeof L === 'undefined') {
+    throw new Error('Leaflet (L) is not available. Ensure leaflet.js is loaded before creating layers.');
+  }
+
+  const group = L.layerGroup().addTo(map);
+  return {
+    clear() {
+      group.clearLayers();
+    },
+    /**
+     * Highlight the connected component containing `rootNodeId`.
+     *
+     * @param {string} rootNodeId
+     * @param {{ nodes: Array, edges: Array }} network
+     * @param {import('../algo/dsu.js').DSU} dsu
+     */
+    render(rootNodeId, network, dsu) {
+      group.clearLayers();
+      if (!rootNodeId || !network || !dsu) return;
+
+      let rootComp;
+      try {
+        rootComp = dsu.find(rootNodeId);
+      } catch {
+        return; // unknown node
+      }
+
+      const byId = new Map((network.nodes ?? []).map((n) => [n.id, n]));
+
+      for (const e of network.edges ?? []) {
+        if (e.status === 'blocked') continue;
+        let fromComp;
+        try {
+          fromComp = dsu.find(e.from);
+        } catch {
+          continue;
+        }
+        if (fromComp !== rootComp) continue;
+
+        const a = byId.get(e.from);
+        const b = byId.get(e.to);
+        if (!a || !b) continue;
+
+        L.polyline([[a.lat, a.lng], [b.lat, b.lng]], {
+          color: '#000000',
+          weight: 4,
+          bubblingMouseEvents: false,
+        }).addTo(group);
+      }
+    },
+  };
+}
+
+/**
+ * Layer for rendering multi-segment mission routes (traveled + return paths).
+ */
+export function createMissionRouteLayer(map) {
+  if (typeof L === 'undefined') {
+    throw new Error('Leaflet (L) is not available. Ensure leaflet.js is loaded before creating layers.');
+  }
+
+  const group = L.layerGroup().addTo(map);
+  return {
+    clear() {
+      group.clearLayers();
+    },
+    /**
+     * @param {Array<[number,number][]>} traveledPaths  – array of latlng arrays for completed legs
+     * @param {[number,number][]|null} returnPath       – latlng array for return-to-start (if aborted)
+     */
+    render(traveledPaths, returnPath) {
+      group.clearLayers();
+
+      for (const path of traveledPaths ?? []) {
+        if (!path || path.length < 2) continue;
+        L.polyline(path, { color: '#000000', weight: 5 }).addTo(group);
+      }
+
+      if (returnPath && returnPath.length >= 2) {
+        L.polyline(returnPath, {
+          color: '#dc2626',
+          weight: 4,
+          dashArray: '8 6',
+        }).addTo(group);
+      }
     },
   };
 }

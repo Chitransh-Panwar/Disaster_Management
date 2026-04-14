@@ -14,70 +14,9 @@ export function createOsmLayers(map, store, eventLog) {
   }
 
   function renderRoads(network, overrides) {
+    // Roads are hidden by default for performance; only algorithm outputs are shown.
+    // OSM data is kept in state for algorithms to use.
     roadGroup.clearLayers();
-    if (!network) return;
-
-    const byId = new Map((network.nodes ?? []).map((n) => [n.id, n]));
-
-    for (const e of network.edges ?? []) {
-      const a = byId.get(e.from);
-      const b = byId.get(e.to);
-      if (!a || !b) continue;
-
-      const status = overrides?.[e.id] ?? e.status;
-      const color =
-        status === 'blocked'
-          ? '#ff3b3b'
-          : status === 'partial'
-            ? '#ff9f1a'
-            : '#66b3ff';
-      const dash = status === 'blocked' ? '6 6' : null;
-
-      const line = L.polyline(
-        [
-          [a.lat, a.lng],
-          [b.lat, b.lng],
-        ],
-        {
-          color,
-          weight: 4,
-          dashArray: dash,
-          bubblingMouseEvents: false,
-        }
-      );
-
-      line.on('click', () => {
-        const state = store.getState();
-        const current = state.osmEdgeOverrides?.[e.id] ?? e.status;
-
-        const wrap = document.createElement('div');
-
-        const title = document.createElement('div');
-        title.style.marginBottom = '6px';
-        title.textContent = `${e.id} (${current})`;
-        wrap.appendChild(title);
-
-        const mk = (label, s) => {
-          const btn = document.createElement('button');
-          btn.textContent = label;
-          btn.style.marginRight = '6px';
-          btn.addEventListener('click', () => {
-            store.dispatch({ type: 'APPLY_OSM_EDGE_OVERRIDE', edgeId: e.id, status: s });
-            eventLog?.logEvent?.('road', `${e.id} → ${s}`);
-            map.closePopup();
-          });
-          return btn;
-        };
-
-        wrap.appendChild(mk('Block ❌', 'blocked'));
-        wrap.appendChild(mk('Partial ⚠', 'partial'));
-        wrap.appendChild(mk('Open ✅', 'open'));
-
-        L.popup().setLatLng(line.getBounds().getCenter()).setContent(wrap).openOn(map);
-      });
-
-      line.addTo(roadGroup);
-    }
   }
 
   function renderPois(pois) {

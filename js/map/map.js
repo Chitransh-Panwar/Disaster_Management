@@ -65,9 +65,37 @@ export function bindMapMarkerPlacement(map, store, eventLog) {
     const html = document.createElement('div');
     html.innerHTML = `<div style="margin-bottom:8px">Add ${tool.kind}:${tool.type} here?</div>`;
 
+    // Speed/fuel fields for facility (helpCenter) markers
+    let speedInput = null;
+    let fuelInput = null;
+    if (tool.kind === 'helpCenter') {
+      const speedRow = document.createElement('div');
+      speedRow.style.marginBottom = '4px';
+      speedRow.innerHTML = '<label>Speed (km/h): </label>';
+      speedInput = document.createElement('input');
+      speedInput.type = 'number';
+      speedInput.value = '60';
+      speedInput.style.width = '60px';
+      speedRow.appendChild(speedInput);
+      html.appendChild(speedRow);
+
+      const fuelRow = document.createElement('div');
+      fuelRow.style.marginBottom = '4px';
+      fuelRow.innerHTML = '<label>Fuel range (km): </label>';
+      fuelInput = document.createElement('input');
+      fuelInput.type = 'number';
+      fuelInput.value = '200';
+      fuelInput.style.width = '60px';
+      fuelRow.appendChild(fuelInput);
+      html.appendChild(fuelRow);
+    }
+
     const btn = document.createElement('button');
     btn.textContent = 'Add marker';
     btn.addEventListener('click', () => {
+      const fields = {};
+      if (speedInput) fields.speedKmh = Number(speedInput.value) || 60;
+      if (fuelInput) fields.fuelKm = Number(fuelInput.value) || 200;
       store.dispatch({
         type: 'ADD_MARKER',
         marker: {
@@ -76,7 +104,7 @@ export function bindMapMarkerPlacement(map, store, eventLog) {
           type: tool.type,
           lat: ev.latlng.lat,
           lng: ev.latlng.lng,
-          fields: {},
+          fields,
         },
       });
       eventLog?.logEvent('marker', `Added ${tool.kind}:${tool.type} (${id})`);

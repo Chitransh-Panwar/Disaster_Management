@@ -1,10 +1,11 @@
 import { bindMapMarkerPlacement, initMap } from './map/map.js';
-import { createMarkerLayers, createRoadLayer, createRouteLayer } from './map/layers.js';
+import { createMarkerLayers, createRoadLayer, createRouteLayer, createBridgeLayer, createComponentLayer, createMissionRouteLayer } from './map/layers.js';
 import { createOsmLayers } from './map/osmLayers.js';
 import { buildOverpassQuery, createOverpassClient, throttleMs } from './domain/overpass.js';
 import { overpassToRoadNetwork } from './domain/osmRoads.js';
 import { overpassToPois } from './domain/osmPois.js';
 import { computeRoadComponents } from './domain/connectivity.js';
+import { DSU } from './algo/dsu.js';
 import { applyEdgeOverrides, buildAdjacency, getAlgorithmNetwork, loadRoadNetwork } from './domain/roads.js';
 import { nearestNodeId } from './domain/snap.js';
 import { bfsLevels } from './algo/bfsSpread.js';
@@ -13,6 +14,8 @@ import { dijkstra } from './algo/dijkstra.js';
 import { findBridgeEdgeIds } from './algo/tarjanBridges.js';
 import { routeStepsFromPath } from './domain/routeSteps.js';
 import { loadScenario, scenarioToStatePayload } from './domain/scenarios.js';
+import { computeWaypointOrder } from './algo/waypointOrder.js';
+import { simulateMission } from './algo/missionSim.js';
 import { createDijkstraModal } from './ui/dijkstraModal.js';
 import { initPanels } from './ui/panels.js';
 import { createEventLog } from './ui/eventLog.js';
@@ -152,6 +155,9 @@ async function main() {
   refreshOsmThrottled();
 
   const route = createRouteLayer(map);
+  const bridgeLayer = createBridgeLayer(map);
+  const componentLayer = createComponentLayer(map);
+  const missionRouteLayer = createMissionRouteLayer(map);
 
   let lastAction = null;
   const baseDispatch = store.dispatch;
@@ -175,6 +181,35 @@ async function main() {
       const components = computeRoadComponents(net);
       store.dispatch({ type: 'SET_STATS', stats: { components } });
       eventLog?.logEvent?.('dsu', `Components: ${components}`);
+
+      // Highlight the component containing start marker or selected marker
+      const markers = Array.isArray(state.markers) ? state.markers : [];
+      let refMarker = null;
+      if (state.routeStartMarkerId) {
+        refMarker = markers.find((m) => m.id === state.routeStartMarkerId);
+      }
+      if (!refMarker && state.selectedMarkerId) {
+        refMarker = markers.find((m) => m.id === state.selectedMarkerId);
+      }
+
+      if (refMarker && Number.isFinite(refMarker.lat) && Number.isFinite(refMarker.lng)) {
+        try {
+          const nodeId = nearestNodeId(net.nodes ?? [], refMarker.lat, refMarker.lng);
+          if (nodeId) {
+            // Build a DSU instance for component rendering
+            const ids = (net.nodes ?? []).map((n) => n.id).filter((id) => typeof id === 'string');
+            const dsu = new DSU(ids);
+            for (const e of net.edges ?? []) {
+              if (e.status === 'blocked') continue;
+              if (typeof e.from === 'string' && typeof e.to === 'string') {
+                try { dsu.union(e.from, e.to); } catch { /* skip unknown */ }
+              }
+            }
+            componentLayer.render(nodeId, net, dsu);
+            eventLog?.logEvent?.('dsu', `Highlighted component containing node ${nodeId}`);
+          }
+        } catch { /* non-critical */ }
+      }
       return;
     }
 
@@ -191,6 +226,9 @@ async function main() {
       const edgeIds = findBridgeEdgeIds(adj);
       store.dispatch({ type: 'SET_BRIDGES', edgeIds });
       eventLog?.logEvent?.('tarjan', `Bridges: ${edgeIds.length}`);
+
+      // Render only bridge edges in black
+      bridgeLayer.render(edgeIds, net);
       return;
     }
 
@@ -290,6 +328,201 @@ async function main() {
       return;
     }
 
+    if (lastAction.type === 'RUN_MISSION') {
+      lastAction = null;
+      const state = store.getState();
+      const net = getAlgorithmNetwork(state);
+      if (!net) {
+        eventLog?.logEvent?.('mission', 'No road network loaded. Enable OSM and zoom in (≥7).');
+        return;
+      }
+
+      const markers = Array.isArray(state.markers) ? state.markers : [];
+      const waypointIds = Array.isArray(state.routeWaypointIds) ? state.routeWaypointIds : [];
+
+      // Find start marker
+      let startMarker = null;
+      if (state.routeStartMarkerId) {
+        startMarker = markers.find((m) => m.id === state.routeStartMarkerId);
+      }
+      if (!startMarker) {
+        eventLog?.logEvent?.('mission', 'Set a Start marker first (click marker → Set as Start)');
+        return;
+      }
+
+      if (waypointIds.length === 0) {
+        eventLog?.logEvent?.('mission', 'Add at least one waypoint (click marker → Add Waypoint)');
+        return;
+      }
+
+      // Get speed/fuel from start marker fields
+      const speedKmh = Number(startMarker.fields?.speedKmh) || 60;
+      const fuelKm = Number(startMarker.fields?.fuelKm) || 200;
+      eventLog?.logEvent?.('mission', `Facility: speed=${speedKmh} km/h, fuel=${fuelKm} km`);
+
+      const adj = buildAdjacency(net);
+      const byId = new Map((net.nodes ?? []).map((n) => [n.id, n]));
+
+      // Snap start + all waypoints to nearest road node
+      let startNodeId;
+      try {
+        startNodeId = nearestNodeId(net.nodes ?? [], startMarker.lat, startMarker.lng);
+      } catch {
+        eventLog?.logEvent?.('mission', 'Failed to snap start marker to road network');
+        return;
+      }
+      if (!startNodeId) {
+        eventLog?.logEvent?.('mission', 'Failed to snap start marker to road network');
+        return;
+      }
+
+      const wpMarkers = waypointIds
+        .map((id) => markers.find((m) => m.id === id))
+        .filter((m) => m && Number.isFinite(m.lat) && Number.isFinite(m.lng));
+
+      if (wpMarkers.length === 0) {
+        eventLog?.logEvent?.('mission', 'No valid waypoint markers found');
+        return;
+      }
+
+      const wpNodeIds = [];
+      for (const wm of wpMarkers) {
+        try {
+          const nid = nearestNodeId(net.nodes ?? [], wm.lat, wm.lng);
+          if (nid) wpNodeIds.push(nid);
+          else {
+            eventLog?.logEvent?.('mission', `Could not snap waypoint ${wm.id} to road`);
+            return;
+          }
+        } catch {
+          eventLog?.logEvent?.('mission', `Could not snap waypoint ${wm.id} to road`);
+          return;
+        }
+      }
+
+      // All points: index 0 = start, 1..n = waypoints
+      const allNodeIds = [startNodeId, ...wpNodeIds];
+      const n = allNodeIds.length;
+
+      // Compute pairwise shortest distances and paths
+      eventLog?.logEvent?.('mission', `Computing pairwise paths for ${n} points...`);
+      const distMatrix = Array.from({ length: n }, () => new Array(n).fill(Infinity));
+      const pathMatrix = Array.from({ length: n }, () => new Array(n).fill(null));
+
+      for (let i = 0; i < n; i++) {
+        distMatrix[i][i] = 0;
+        pathMatrix[i][i] = [allNodeIds[i]];
+        for (let j = i + 1; j < n; j++) {
+          const res = dijkstra(adj, allNodeIds[i], allNodeIds[j]);
+          distMatrix[i][j] = res.distance;
+          distMatrix[j][i] = res.distance;
+          pathMatrix[i][j] = res.path;
+          pathMatrix[j][i] = res.path.length > 0 ? [...res.path].reverse() : [];
+        }
+      }
+
+      // Compute auto-ordered visitation sequence
+      const order = computeWaypointOrder(distMatrix);
+      const orderedLabels = order.map((idx) => allNodeIds[idx]);
+      eventLog?.logEvent?.('mission', `Auto-ordered: ${orderedLabels.join(' → ')}`);
+
+      // Build concatenated path segments
+      const segments = [];
+      let anyUnreachable = false;
+      for (let k = 0; k < order.length - 1; k++) {
+        const fromIdx = order[k];
+        const toIdx = order[k + 1];
+        const path = pathMatrix[fromIdx][toIdx];
+        const dist = distMatrix[fromIdx][toIdx];
+
+        if (!path || path.length < 2 || !Number.isFinite(dist)) {
+          eventLog?.logEvent?.('mission', `No route from ${allNodeIds[fromIdx]} to ${allNodeIds[toIdx]}`);
+          anyUnreachable = true;
+          break;
+        }
+
+        // waypointIdx refers to the index in wpMarkers (0-based)
+        const wpIdx = toIdx - 1; // since allNodeIds[0] is start
+        segments.push({ path, distanceKm: dist, waypointIdx: wpIdx });
+      }
+
+      if (anyUnreachable) {
+        missionRouteLayer.clear();
+        return;
+      }
+
+      // Compute total distance and ETA
+      const totalDistanceKm = segments.reduce((sum, s) => sum + s.distanceKm, 0);
+      const etaHours = speedKmh > 0 ? totalDistanceKm / speedKmh : Infinity;
+
+      eventLog?.logEvent?.('mission',
+        `Total distance: ${Math.round(totalDistanceKm)} km | ETA: ${(etaHours * 60).toFixed(1)} min (${etaHours.toFixed(2)} h)`
+      );
+
+      // Simulate mission with fuel constraint
+      const djFn = (s, g) => dijkstra(adj, s, g);
+      const missionResult = simulateMission(segments, fuelKm, speedKmh, djFn);
+
+      // Store result
+      store.dispatch({ type: 'SET_MISSION_RESULT', result: missionResult });
+
+      // Set waypoint statuses
+      const statuses = {};
+      for (let i = 0; i < wpMarkers.length; i++) {
+        statuses[wpMarkers[i].id] = missionResult.visitedWaypointIndices.includes(i)
+          ? 'visited'
+          : 'unvisited';
+      }
+      store.dispatch({ type: 'SET_WAYPOINT_STATUSES', statuses });
+
+      // Convert node paths to latlng paths for rendering
+      const traveledLatLngs = missionResult.traveledPaths.map((nodePath) =>
+        nodePath
+          .map((nid) => { const nd = byId.get(nid); return nd ? [nd.lat, nd.lng] : null; })
+          .filter(Boolean)
+      );
+
+      let returnLatLngs = null;
+      if (missionResult.returnPath) {
+        returnLatLngs = missionResult.returnPath
+          .map((nid) => { const nd = byId.get(nid); return nd ? [nd.lat, nd.lng] : null; })
+          .filter(Boolean);
+      }
+
+      missionRouteLayer.render(traveledLatLngs, returnLatLngs);
+
+      if (missionResult.aborted) {
+        eventLog?.logEvent?.('mission',
+          `⚠ MISSION ABORT at node ${missionResult.abortNodeId}. ` +
+          `Visited: ${missionResult.visitedWaypointIndices.length}/${wpMarkers.length} waypoints. ` +
+          `Returning to start (${Math.round(missionResult.returnDistanceKm)} km).`
+        );
+      } else {
+        eventLog?.logEvent?.('mission',
+          `✅ Mission complete! All ${wpMarkers.length} waypoints visited. ` +
+          `Distance: ${Math.round(missionResult.totalDistanceKm)} km, ` +
+          `ETA: ${(missionResult.etaHours * 60).toFixed(1)} min`
+        );
+      }
+
+      // Open modal with mission summary
+      dijkstraModal.open({
+        title: missionResult.aborted ? '⚠ Mission Aborted' : '✅ Mission Complete',
+        subtitle: `Distance: ${Math.round(missionResult.totalDistanceKm)} km | ETA: ${(missionResult.etaHours * 60).toFixed(1)} min | Speed: ${speedKmh} km/h | Fuel: ${fuelKm} km`,
+        steps: segments.map((seg, i) => ({
+          from: seg.path[0],
+          to: seg.path[seg.path.length - 1],
+          edgeId: `leg-${i + 1}`,
+          status: missionResult.visitedWaypointIndices.includes(seg.waypointIdx) ? 'visited ✅' : 'missed ❌',
+          cost: seg.distanceKm,
+          cumulativeCost: segments.slice(0, i + 1).reduce((s, x) => s + x.distanceKm, 0),
+        })),
+        totalCost: missionResult.totalDistanceKm,
+      });
+
+      return;
+    }
+
     if (lastAction.type !== 'RUN_DIJKSTRA') {
       lastAction = null;
       return;
@@ -369,6 +602,14 @@ async function main() {
     eventLog?.logEvent?.(
       'dijkstra',
       `Distance: ${Math.round(res.distance)} km, path nodes: ${res.path.length}`
+    );
+
+    // Compute ETA if start marker has speed info
+    const speedKmh = Number(start.fields?.speedKmh) || 60;
+    const etaHours = speedKmh > 0 ? res.distance / speedKmh : Infinity;
+    eventLog?.logEvent?.(
+      'dijkstra',
+      `ETA: ${(etaHours * 60).toFixed(1)} min (speed: ${speedKmh} km/h)`
     );
 
     const pathLatLngs = res.path
