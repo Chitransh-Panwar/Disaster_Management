@@ -3,6 +3,9 @@ const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
 function normalizeBbox(bbox) {
   if (Array.isArray(bbox) && bbox.length === 4) {
     const [s, w, n, e] = bbox;
+    if (![s, w, n, e].every((v) => Number.isFinite(v))) {
+      throw new Error('bbox must provide finite numbers: s,w,n,e');
+    }
     return { s, w, n, e };
   }
 
@@ -39,35 +42,35 @@ export function buildOverpassQuery({ bbox, includeRoads = true, includePois = tr
   }
 
   const union = parts.join('\n  ');
-  return `[out:json];\n(\n  ${union}\n);\nout body;\n>;\nout skel qt;`;
+  return `[out:json][timeout:25];\n(\n  ${union}\n);\nout body geom;`;
 }
 
 /**
- * A small debounce-like helper.
- * Returns a function that resolves after `ms` of quiet time.
- * If called again before the timer fires, the timer is reset.
+ * Debounce calls to `fn` by `waitMs`.
+ * Returns a function that resets its timer on each call; after `waitMs` of
+ * inactivity it calls fn(...args) using the most recent args.
  */
-export function throttleMs(ms) {
-  if (!Number.isFinite(ms) || ms < 0) {
-    throw new Error('ms must be a non-negative finite number');
+export function throttleMs(fn, waitMs) {
+  if (typeof fn !== 'function') {
+    throw new Error('fn must be a function');
+  }
+  if (!Number.isFinite(waitMs) || waitMs < 0) {
+    throw new Error('waitMs must be a non-negative finite number');
   }
 
   let timer = null;
-  /** @type {Array<() => void>} */
-  let resolvers = [];
+  let lastArgs = null;
+  let lastThis = null;
 
-  return function wait() {
-    return new Promise((resolve) => {
-      resolvers.push(resolve);
+  return function throttled(...args) {
+    lastArgs = args;
+    lastThis = this;
 
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(() => {
-        timer = null;
-        const rs = resolvers;
-        resolvers = [];
-        for (const r of rs) r();
-      }, ms);
-    });
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => {
+      timer = null;
+      fn.apply(lastThis, lastArgs ?? []);
+    }, waitMs);
   };
 }
 
