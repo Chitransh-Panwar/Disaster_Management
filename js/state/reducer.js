@@ -4,8 +4,17 @@ export function createInitialState() {
     activeScenarioId: null,
     markers: [],
     selectedMarkerId: null,
+
     roadNetwork: null,
     edgeOverrides: {},
+
+    // Live OSM layers
+    osmEnabled: true,
+    osmRoadNetwork: null,
+    osmPois: [],
+    osmEdgeOverrides: {},
+    osmFetchStatus: { loading: false, error: null, lastAt: null },
+
     bridgeEdgeIds: [],
     stats: { components: null },
     resources: [],
@@ -35,6 +44,17 @@ export function sanitizePersistedState(persisted) {
       if (v === 'open' || v === 'partial' || v === 'blocked') clean[k] = v;
     }
     out.edgeOverrides = clean;
+  }
+  if (typeof persisted.osmEnabled === 'boolean') {
+    out.osmEnabled = persisted.osmEnabled;
+  }
+  if (persisted.osmEdgeOverrides && typeof persisted.osmEdgeOverrides === 'object') {
+    const clean = Object.create(null);
+    for (const [k, v] of Object.entries(persisted.osmEdgeOverrides)) {
+      if (k === '__proto__' || k === 'constructor' || k === 'prototype') continue;
+      if (v === 'open' || v === 'partial' || v === 'blocked') clean[k] = v;
+    }
+    out.osmEdgeOverrides = clean;
   }
   if (persisted.bridgeEdgeIds && Array.isArray(persisted.bridgeEdgeIds)) {
     out.bridgeEdgeIds = persisted.bridgeEdgeIds;
@@ -70,6 +90,32 @@ export function reducer(state, action) {
       return {
         ...state,
         edgeOverrides: { ...state.edgeOverrides, [action.edgeId]: action.status },
+      };
+    case 'SET_OSM_ENABLED':
+      return { ...state, osmEnabled: action.enabled };
+    case 'OSM_FETCH_START':
+      return {
+        ...state,
+        osmFetchStatus: { ...state.osmFetchStatus, loading: true, error: null },
+      };
+    case 'OSM_FETCH_ERROR':
+      return {
+        ...state,
+        osmFetchStatus: { ...state.osmFetchStatus, loading: false, error: action.error ?? 'Error' },
+      };
+    case 'OSM_FETCH_SUCCESS': {
+      const lastAt = Number.isFinite(action.at) ? action.at : Date.now();
+      return {
+        ...state,
+        osmRoadNetwork: action.network,
+        osmPois: action.pois,
+        osmFetchStatus: { loading: false, error: null, lastAt },
+      };
+    }
+    case 'APPLY_OSM_EDGE_OVERRIDE':
+      return {
+        ...state,
+        osmEdgeOverrides: { ...state.osmEdgeOverrides, [action.edgeId]: action.status },
       };
     case 'SET_STATS':
       return { ...state, stats: { ...state.stats, ...action.stats } };

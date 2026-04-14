@@ -44,3 +44,32 @@ test('reducer stores knapsack result', () => {
   assert.equal(s1.knapsackResult.maxValue, 7);
   assert.deepEqual(s1.knapsackResult.chosen, { X: 1 });
 });
+
+test('createInitialState includes OSM defaults', () => {
+  const s0 = createInitialState();
+  assert.equal(s0.osmEnabled, true);
+  assert.equal(s0.osmRoadNetwork, null);
+  assert.deepEqual(s0.osmPois, []);
+  assert.deepEqual(s0.osmEdgeOverrides, {});
+  assert.deepEqual(s0.osmFetchStatus, { loading: false, error: null, lastAt: null });
+});
+
+test('reducer OSM_FETCH_SUCCESS stores network + pois and sets lastAt', () => {
+  const s0 = createInitialState();
+  const network = { nodes: { N1: { id: 'N1' } }, edges: [] };
+  const pois = [{ id: 'P1', name: 'Shelter' }];
+
+  const s1 = reducer(s0, { type: 'OSM_FETCH_SUCCESS', network, pois, at: 123 });
+  assert.equal(s1.osmRoadNetwork, network);
+  assert.equal(s1.osmPois, pois);
+  assert.equal(typeof s1.osmFetchStatus.lastAt, 'number');
+  assert.equal(s1.osmFetchStatus.lastAt, 123);
+  assert.equal(s1.osmFetchStatus.loading, false);
+  assert.equal(s1.osmFetchStatus.error, null);
+});
+
+test('reducer APPLY_OSM_EDGE_OVERRIDE stores status in osmEdgeOverrides', () => {
+  const s0 = createInitialState();
+  const s1 = reducer(s0, { type: 'APPLY_OSM_EDGE_OVERRIDE', edgeId: 'E42', status: 'blocked' });
+  assert.equal(s1.osmEdgeOverrides.E42, 'blocked');
+});
