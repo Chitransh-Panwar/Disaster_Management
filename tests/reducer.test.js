@@ -68,6 +68,32 @@ test('reducer OSM_FETCH_SUCCESS stores network + pois and sets lastAt', () => {
   assert.equal(s1.osmFetchStatus.error, null);
 });
 
+test('reducer SET_OSM_ENABLED coerces enabled to boolean', () => {
+  const s0 = createInitialState();
+  const s1 = reducer(s0, { type: 'SET_OSM_ENABLED', enabled: 'yes' });
+  assert.equal(s1.osmEnabled, true);
+
+  const s2 = reducer(s1, { type: 'SET_OSM_ENABLED', enabled: 0 });
+  assert.equal(s2.osmEnabled, false);
+});
+
+test('reducer OSM_FETCH_SUCCESS guards pois as array', () => {
+  const s0 = createInitialState();
+  const s1 = reducer(s0, { type: 'OSM_FETCH_SUCCESS', network: null, pois: null, at: 1 });
+  assert.deepEqual(s1.osmPois, []);
+});
+
+test('reducer OSM_FETCH_ERROR stringifies error', () => {
+  const s0 = createInitialState();
+  const s1 = reducer(s0, { type: 'OSM_FETCH_ERROR', error: { message: 'Boom' } });
+  assert.equal(s1.osmFetchStatus.loading, false);
+  assert.equal(typeof s1.osmFetchStatus.error, 'string');
+  assert.equal(s1.osmFetchStatus.error, '[object Object]');
+
+  const s2 = reducer(s0, { type: 'OSM_FETCH_ERROR', error: null });
+  assert.equal(s2.osmFetchStatus.error, 'Unknown error');
+});
+
 test('reducer APPLY_OSM_EDGE_OVERRIDE stores status in osmEdgeOverrides', () => {
   const s0 = createInitialState();
   const s1 = reducer(s0, { type: 'APPLY_OSM_EDGE_OVERRIDE', edgeId: 'E42', status: 'blocked' });

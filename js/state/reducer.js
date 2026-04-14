@@ -92,7 +92,7 @@ export function reducer(state, action) {
         edgeOverrides: { ...state.edgeOverrides, [action.edgeId]: action.status },
       };
     case 'SET_OSM_ENABLED':
-      return { ...state, osmEnabled: action.enabled };
+      return { ...state, osmEnabled: Boolean(action.enabled) };
     case 'OSM_FETCH_START':
       return {
         ...state,
@@ -101,14 +101,18 @@ export function reducer(state, action) {
     case 'OSM_FETCH_ERROR':
       return {
         ...state,
-        osmFetchStatus: { ...state.osmFetchStatus, loading: false, error: action.error ?? 'Error' },
+        osmFetchStatus: {
+          ...state.osmFetchStatus,
+          loading: false,
+          error: String(action.error ?? 'Unknown error'),
+        },
       };
     case 'OSM_FETCH_SUCCESS': {
       const lastAt = Number.isFinite(action.at) ? action.at : Date.now();
       return {
         ...state,
         osmRoadNetwork: action.network,
-        osmPois: action.pois,
+        osmPois: Array.isArray(action.pois) ? action.pois : [],
         osmFetchStatus: { loading: false, error: null, lastAt },
       };
     }
