@@ -1,9 +1,17 @@
 /**
- * Waypoint ordering heuristics.
+ * waypointOrder.js
  *
- * Given a distance matrix between points, computes a good visitation order
- * starting from a fixed start index (0) using nearest-neighbor + 2-opt.
+ * Waypoint ordering heuristics: nearest-neighbor + 2-opt.
+ *
+ * When the WASM module is available the C++ implementation (cpp/algo.cpp) is
+ * used for computeWaypointOrder().  The helper exports (nearestNeighborOrder,
+ * pathCost, twoOptImprove) always use the pure-JavaScript implementations
+ * since they are fine-grained utilities called from JS contexts.
  */
+
+import { getWasmModule, wasmComputeWaypointOrder } from './wasmBridge.js';
+
+/* ─── Pure-JS implementations ──────────────────────────────────────────────── */
 
 /**
  * Nearest-neighbor heuristic starting from index 0.
@@ -104,6 +112,8 @@ export function twoOptImprove(distMatrix, order, maxIter = 100) {
   return order;
 }
 
+/* ─── Public export: WASM when available, JS otherwise ─────────────────────── */
+
 /**
  * Compute a good waypoint visitation order.
  *
@@ -111,6 +121,9 @@ export function twoOptImprove(distMatrix, order, maxIter = 100) {
  * @returns {number[]} ordered indices starting with 0
  */
 export function computeWaypointOrder(distMatrix) {
+  if (getWasmModule()) {
+    return wasmComputeWaypointOrder(distMatrix);
+  }
   const order = nearestNeighborOrder(distMatrix);
   twoOptImprove(distMatrix, order);
   return order;

@@ -27,9 +27,14 @@ import { createStore } from './state/store.js';
 import { createInitialState, reducer, sanitizePersistedState } from './state/reducer.js';
 import { loadState, saveState } from './state/storage.js';
 import { initFreehandDrawing } from './map/freehandDraw.js';
+import { initWasm } from './algo/wasmBridge.js';
 
 
 async function main() {
+  // Attempt to load the Emscripten/WASM module compiled from cpp/algo.cpp.
+  // If the WASM artifacts haven't been built yet the app continues with the
+  // pure-JavaScript algorithm fallbacks – no functionality is lost.
+  await initWasm();
   const persisted = sanitizePersistedState(loadState());
   const base = createInitialState();
   const store = createStore(reducer, persisted ? { ...base, ...persisted } : undefined);
@@ -525,9 +530,11 @@ async function main() {
         `Total distance: ${Math.round(totalDistanceKm)} km | ETA: ${(etaHours * 60).toFixed(1)} min (${etaHours.toFixed(2)} h)`
       );
 
-      // Simulate mission with fuel constraint
+      // Simulate mission with fuel constraint.
+      // Pass `adj` as the 5th argument so the WASM version can compute
+      // the return-path internally; the JS fallback uses djFn instead.
       const djFn = (s, g) => dijkstra(adj, s, g);
-      const missionResult = simulateMission(segments, fuelKm, speedKmh, djFn);
+      const missionResult = simulateMission(segments, fuelKm, speedKmh, djFn, adj);
 
       // Store result
       store.dispatch({ type: 'SET_MISSION_RESULT', result: missionResult });

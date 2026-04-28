@@ -1,4 +1,17 @@
-export function boundedKnapsack(items, maxWeight) {
+/**
+ * knapsack.js
+ *
+ * Bounded knapsack via binary splitting → 0/1 DP.
+ *
+ * When the WASM module is available the C++ implementation (cpp/algo.cpp) is
+ * used.  Otherwise the pure-JavaScript fallback below is used transparently.
+ */
+
+import { getWasmModule, wasmBoundedKnapsack } from './wasmBridge.js';
+
+/* ─── Pure-JS fallback implementation ─────────────────────────────────────── */
+
+function boundedKnapsack_js(items, maxWeight) {
   if (!Number.isInteger(maxWeight) || maxWeight < 0) {
     throw new Error('Knapsack maxWeight must be a non-negative integer');
   }
@@ -74,4 +87,13 @@ export function boundedKnapsack(items, maxWeight) {
   }
 
   return { maxValue: dp[bestW], chosen: outChosen };
+}
+
+/* ─── Public export: WASM when available, JS otherwise ─────────────────────── */
+
+export function boundedKnapsack(items, maxWeight) {
+  if (getWasmModule()) {
+    return wasmBoundedKnapsack(items, maxWeight);
+  }
+  return boundedKnapsack_js(items, maxWeight);
 }

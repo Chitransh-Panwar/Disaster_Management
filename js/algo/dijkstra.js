@@ -1,4 +1,17 @@
-export function dijkstra(graph, start, goal) {
+/**
+ * dijkstra.js
+ *
+ * When the WASM module is loaded (via initWasm() in app.js) the exported
+ * dijkstra() function delegates to the C++ implementation compiled in
+ * cpp/algo.cpp.  If the WASM module is unavailable (e.g. not yet built) the
+ * pure-JavaScript fallback below is used transparently.
+ */
+
+import { getWasmModule, wasmDijkstra } from './wasmBridge.js';
+
+/* ─── Pure-JS fallback implementation ─────────────────────────────────────── */
+
+function dijkstra_js(graph, start, goal) {
   if (start === goal) {
     return { distance: 0, path: [start] };
   }
@@ -68,4 +81,13 @@ export function dijkstra(graph, start, goal) {
   if (path[path.length - 1] !== start) return { distance: Infinity, path: [] };
   path.reverse();
   return { distance, path };
+}
+
+/* ─── Public export: WASM when available, JS otherwise ─────────────────────── */
+
+export function dijkstra(graph, start, goal) {
+  if (getWasmModule()) {
+    return wasmDijkstra(graph, start, goal);
+  }
+  return dijkstra_js(graph, start, goal);
 }

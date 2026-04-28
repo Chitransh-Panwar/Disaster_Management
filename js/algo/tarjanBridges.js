@@ -1,4 +1,17 @@
-export function findBridgeEdgeIds(adj) {
+/**
+ * tarjanBridges.js
+ *
+ * Tarjan's bridge-finding algorithm.
+ *
+ * When the WASM module is available the C++ implementation (cpp/algo.cpp) is
+ * used.  Otherwise the pure-JavaScript fallback below is used transparently.
+ */
+
+import { getWasmModule, wasmFindBridges } from './wasmBridge.js';
+
+/* ─── Pure-JS fallback implementation ─────────────────────────────────────── */
+
+function findBridgeEdgeIds_js(adj) {
   const disc = new Map();
   const low = new Map();
   let time = 0;
@@ -28,4 +41,13 @@ export function findBridgeEdgeIds(adj) {
   }
 
   return Array.from(bridges);
+}
+
+/* ─── Public export: WASM when available, JS otherwise ─────────────────────── */
+
+export function findBridgeEdgeIds(adj) {
+  if (getWasmModule()) {
+    return wasmFindBridges(adj);
+  }
+  return findBridgeEdgeIds_js(adj);
 }
