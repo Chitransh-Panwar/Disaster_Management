@@ -20,7 +20,7 @@ let _mod = null;          // Emscripten module instance (or null)
 let _initPromise = null;  // singleton init promise
 
 /**
- * Initialise the WASM module.  Safe to call multiple times – only runs once.
+ * Initialize the WASM module.  Safe to call multiple times – only runs once.
  * @returns {Promise<boolean>}  true if WASM loaded, false if unavailable/error
  */
 export async function initWasm() {

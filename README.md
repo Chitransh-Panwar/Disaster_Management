@@ -96,7 +96,7 @@ Open `index.html` (or serve with `npx serve .`) and check the browser console.  
 │   │   ├── tarjanBridges.js← WASM-backed (JS fallback)
 │   │   ├── waypointOrder.js← WASM-backed (JS fallback)
 │   │   ├── missionSim.js   ← WASM-backed (JS fallback)
-│   │   └── wasm/           ← generated build artefacts (git-ignored)
+│   │   └── wasm/           ← generated build artifacts (git-ignored)
 │   ├── app.js              ← app entry-point (calls initWasm on startup)
 │   └── …                   ← UI, state, domain modules (unchanged)
 ├── build_wasm.sh           ← Emscripten build script

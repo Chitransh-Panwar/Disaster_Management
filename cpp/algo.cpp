@@ -2,6 +2,9 @@
  * algo.cpp – C++ implementations of all Disaster Management algorithms.
  *
  * Compiled to WebAssembly with Emscripten (see build_wasm.sh).
+ * nlohmann/json (single-header) is required; fetch it first with:
+ *   bash cpp/get_json_dep.sh
+ *
  * Each exported function receives and returns a JSON string so that the
  * JavaScript glue layer can marshal complex data without manual memory
  * management (Emscripten's ccall/cwrap handles char* ↔ JS string for us).

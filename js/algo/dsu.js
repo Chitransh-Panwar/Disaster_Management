@@ -62,7 +62,7 @@ class DSU_JS {
 
 /* ─── Public export: WASM when available, JS otherwise ─────────────────────── */
 
-export const DSU = class DSU {
+export class DSU {
   #impl;
 
   constructor(items) {
@@ -72,4 +72,4 @@ export const DSU = class DSU {
   find(x)       { return this.#impl.find(x); }
   union(a, b)   { return this.#impl.union(a, b); }
   components()  { return this.#impl.components(); }
-};
+}
