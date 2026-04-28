@@ -1,4 +1,18 @@
-export class DSU {
+/**
+ * dsu.js
+ *
+ * DSU (Disjoint Set Union / Union–Find) with path compression and union-by-rank.
+ *
+ * When the WASM module is available the WasmDSU class (backed by the C++
+ * implementation in cpp/algo.cpp) is exported as `DSU`.  Otherwise the
+ * pure-JavaScript implementation below is used transparently.
+ */
+
+import { getWasmModule, WasmDSU } from './wasmBridge.js';
+
+/* ─── Pure-JS fallback implementation ─────────────────────────────────────── */
+
+class DSU_JS {
   constructor(items) {
     this.parent = new Map();
     this.rank = new Map();
@@ -45,3 +59,17 @@ export class DSU {
     return this._components;
   }
 }
+
+/* ─── Public export: WASM when available, JS otherwise ─────────────────────── */
+
+export const DSU = class DSU {
+  #impl;
+
+  constructor(items) {
+    this.#impl = getWasmModule() ? new WasmDSU(items) : new DSU_JS(items);
+  }
+
+  find(x)       { return this.#impl.find(x); }
+  union(a, b)   { return this.#impl.union(a, b); }
+  components()  { return this.#impl.components(); }
+};

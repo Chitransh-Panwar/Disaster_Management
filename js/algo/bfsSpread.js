@@ -1,4 +1,17 @@
-export function bfsLevels(adj, start) {
+/**
+ * bfsSpread.js
+ *
+ * BFS level-spread from a source node.
+ *
+ * When the WASM module is available the C++ implementation (cpp/algo.cpp) is
+ * used.  Otherwise the pure-JavaScript fallback below is used transparently.
+ */
+
+import { getWasmModule, wasmBfsLevels } from './wasmBridge.js';
+
+/* ─── Pure-JS fallback implementation ─────────────────────────────────────── */
+
+function bfsLevels_js(adj, start) {
   if (typeof start !== 'string' || start.length === 0) {
     throw new Error('BFS start must be a non-empty string');
   }
@@ -19,4 +32,13 @@ export function bfsLevels(adj, start) {
   }
 
   return levels;
+}
+
+/* ─── Public export: WASM when available, JS otherwise ─────────────────────── */
+
+export function bfsLevels(adj, start) {
+  if (getWasmModule()) {
+    return wasmBfsLevels(adj, start);
+  }
+  return bfsLevels_js(adj, start);
 }

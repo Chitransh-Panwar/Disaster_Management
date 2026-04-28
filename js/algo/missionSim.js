@@ -1,8 +1,18 @@
 /**
+ * missionSim.js
+ *
  * Mission simulation with fuel constraints.
  *
- * Simulates traversal along a segmented route, checking fuel at each waypoint boundary.
+ * When the WASM module is available the C++ implementation (cpp/algo.cpp) is
+ * used.  In that case the adjacency list (`adj`) must be passed as the fifth
+ * argument so the C++ side can compute the return path with Dijkstra.
+ * If `adj` is omitted and WASM is active, the function falls back to JS.
+ *
+ * The pure-JavaScript fallback (used when WASM is not built) keeps the
+ * original `dijkstraFn` callback interface unchanged.
  */
+
+import { getWasmModule, wasmSimulateMission } from './wasmBridge.js';
 
 /**
  * @typedef {Object} MissionSegment
@@ -24,16 +34,9 @@
  * @property {string}    abortNodeId     – node where mission was aborted (empty if not aborted)
  */
 
-/**
- * Simulate a mission along segmented route with fuel constraint.
- *
- * @param {MissionSegment[]} segments – ordered route segments (leg 0 = start→wp0, leg 1 = wp0→wp1, …)
- * @param {number} fuelKm      – initial fuel in km
- * @param {number} speedKmh    – vehicle speed in km/h
- * @param {function} dijkstraFn – (startNodeId, goalNodeId) => { distance, path }
- * @returns {MissionResult}
- */
-export function simulateMission(segments, fuelKm, speedKmh, dijkstraFn) {
+/* ─── Pure-JS fallback implementation ─────────────────────────────────────── */
+
+function simulateMission_js(segments, fuelKm, speedKmh, dijkstraFn) {
   let remainingFuel = fuelKm;
   const traveledPaths = [];
   const visitedWaypointIndices = [];
@@ -99,4 +102,24 @@ export function simulateMission(segments, fuelKm, speedKmh, dijkstraFn) {
     unvisitedWaypointIndices: [],
     abortNodeId: '',
   };
+}
+
+/* ─── Public export: WASM when available, JS otherwise ─────────────────────── */
+
+/**
+ * Simulate a mission along segmented route with fuel constraint.
+ *
+ * @param {MissionSegment[]} segments  – ordered route segments
+ * @param {number}   fuelKm            – initial fuel in km
+ * @param {number}   speedKmh          – vehicle speed in km/h
+ * @param {function} dijkstraFn        – (startNodeId, goalNodeId) => { distance, path }
+ *                                       (used by the JS fallback for return-path calc)
+ * @param {Object}   [adj]             – adjacency list; required when WASM is active
+ * @returns {MissionResult}
+ */
+export function simulateMission(segments, fuelKm, speedKmh, dijkstraFn, adj) {
+  if (getWasmModule() && adj) {
+    return wasmSimulateMission(segments, fuelKm, speedKmh, adj);
+  }
+  return simulateMission_js(segments, fuelKm, speedKmh, dijkstraFn);
 }

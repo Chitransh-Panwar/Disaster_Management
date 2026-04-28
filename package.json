@@ -1,3 +1,9 @@
 {
-  "type": "module"
+  "type": "module",
+  "scripts": {
+    "build:wasm": "bash build_wasm.sh",
+    "build:wasm:debug": "bash build_wasm.sh --debug",
+    "wasm:deps": "bash cpp/get_json_dep.sh",
+    "test": "node --test tests/*.test.js"
+  }
 }
